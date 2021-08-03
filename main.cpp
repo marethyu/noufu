@@ -1,7 +1,7 @@
 // Gameboy skeleton with debugger
 /*
 Stage 1: Pass Blargg's CPU tests (complete)
-Stage 1.5: Implement `reload-rom` and `get-ppm` debug commands
+Stage 1.5: Implement `get-ppm` debug command
 Stage 2: Refactor code (make seperate files for each class) and implement PPU to run Boot rom (don't forgot to make a Makefile)
 Stage 3: Pass other Blargg's tests and make sure it can run Tetris without problems
 Stage 4: Implement a seperate class for cartridge with basic MBC support and make sure it can run Mario
@@ -20,9 +20,9 @@ edit reg16 [r16] [v] - change the value of register r16 with v
 edit mem [addr] [v] - change the value of mem addr with v
 blargg - display serial output results
 run x - run till PC=x (x is hex)
+reload-rom
 
 TODO:
-reload-rom
 get-ppm - create a ppm file of current screen
 print rom-info - print basic rom information
 save-state fname - save current emulator state to fname
@@ -33,7 +33,7 @@ notes: both addr and v are hex
 /*
 blargg tests passed:
 - 01-special.gb
-- 02-interrupts.gb
+- 02-interrupts.gb**
 - 03-op sp,hl.gb
 - 04-op r,imm.gb
 - 05-op rp.gb
@@ -43,6 +43,8 @@ blargg tests passed:
 - 09-op r,r.gb
 - 10-bit ops.gb
 - 11-op a,(hl).gb
+
+**halt is taking too long... perhaps it will be solved after PPU implementation is complete...
 */
 // TODO optimize code? proper cli, label memory regions for debugging
 
@@ -62,7 +64,7 @@ blargg tests passed:
 
 using namespace std::chrono;
 
-#define NDEBUG
+// #define NDEBUG
 
 // Maximum number of cycles per update
 const int MAX_CYCLES = 70224;         // 154 scanlines * 456 cycles per frame = 70224
@@ -1267,6 +1269,10 @@ void Cpu::Step()
 
     m_Emulator->m_IntManager->InterruptRoutine();
 
+#ifndef NDEBUG
+    Cpu::Debug_LogState();
+#endif
+
     if (bHalted)
     {
         m_Emulator->Tick();
@@ -2265,6 +2271,7 @@ void Timer::Debug_PrintStatus()
 MemoryController::MemoryController(Emulator *emu)
 {
     m_Emulator = emu;
+    m_Cartridge.fill(0);
 }
 
 MemoryController::~MemoryController()
@@ -2274,7 +2281,6 @@ MemoryController::~MemoryController()
 
 void MemoryController::Reset()
 {
-    m_Cartridge.fill(0);
     m_VRAM.fill(0);
     m_WRAM.fill(0);
     m_OAM.fill(0);
@@ -2478,7 +2484,6 @@ void Emulator::Update()
     while ((m_TotalCycles - m_PrevTotalCycles) <= MAX_CYCLES)
     {
         int initial_cycles = m_TotalCycles;
-        m_Cpu->Debug_LogState(); // debug
         m_Cpu->Step();
         m_Timer->Update(m_TotalCycles - initial_cycles);
 
@@ -2536,14 +2541,12 @@ int main(int argc, char *argv[])
 {
     Emulator *emu = new Emulator();
 
+    emu->m_MemControl->LoadROM("../IronBoy/ROMS/blargg_tests/cpu_instrs/individual/02-interrupts.gb" /*argv[1]*/);
     emu->ResetComponents();
-    emu->m_MemControl->LoadROM("../IronBoy/ROMS/blargg_tests/instr_timing/instr_timing.gb" /*argv[1]*/);
 
 #ifdef NDEBUG
     uint64_t initial_ms = unix_epoch_millis();
     uint64_t millis = 0;
-
-    fout.open("gblog.txt");
 
     while (true)
     {
@@ -2555,13 +2558,13 @@ int main(int argc, char *argv[])
             millis = current_ms;
         }
     }
-
-    fout.close();
 #else
     std::vector<char> blargg_serial;
     std::string input_str;
 
-    std::cout << "GB - debug mode enabled" << std::endl;
+    std::cout << "Noufu - debug mode enabled" << std::endl;
+
+    fout.open("gblog.txt", std::ofstream::out | std::ofstream::trunc);
 
     while (true)
     {
@@ -2680,7 +2683,16 @@ int main(int argc, char *argv[])
             int x = int_from_string(str, true);
             emu->Debug_StepTill(blargg_serial, (uint16_t) x);
         }
+        else if (str == "reload-rom")
+        {
+            emu->ResetComponents();
+            blargg_serial.clear();
+            fout.close();
+            fout.open("gblog.txt", std::ofstream::out | std::ofstream::trunc);
+        }
     }
+
+    fout.close();
 #endif
 
     return 0;
