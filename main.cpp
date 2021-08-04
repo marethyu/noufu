@@ -1,7 +1,6 @@
 // Gameboy skeleton with debugger
 /*
 Stage 1: Pass Blargg's CPU tests (complete)
-Stage 1.5: Implement `get-ppm` debug command
 Stage 2: Refactor code (make seperate files for each class) and implement PPU to run Boot rom (don't forgot to make a Makefile)
 Stage 3: Pass other Blargg's tests and make sure it can run Tetris without problems
 Stage 4: Implement a seperate class for cartridge with basic MBC support and make sure it can run Mario
@@ -10,7 +9,7 @@ Stage 4: Implement a seperate class for cartridge with basic MBC support and mak
 debug cmds:
 step ([x]) - step cpu for x times (x=1 is default)
 quit - quit debugger
-print status [all cpu intman timer]
+print status [all cpu intman timer gpu]
 print mem [addr] - print value in mem bus at addr
 print mem range [start] [end] - print memory values from start to end
 print ins - print current instruction
@@ -716,9 +715,8 @@ class GBComponent;
 class Cpu;
 class InterruptManager;
 class Timer;
+class Gpu;
 class MemoryController;
-class CpuMemoryController;
-class Timer;
 class Emulator;
 
 class GBComponent
@@ -853,6 +851,21 @@ public:
     void Debug_PrintStatus();
 };
 
+class Gpu : GBComponent
+{
+private:
+    Emulator *m_Emulator;
+private:
+    Gpu(Emulator *emu);
+    ~Gpu();
+
+    void Reset();
+    void Update(int cycles);
+
+    void Debug_PrintStatus();
+    void Debug_RenderPPM(const std::string& ppm_fname);
+};
+
 class MemoryController : GBComponent
 {
 private:
@@ -889,6 +902,18 @@ public:
     uint8_t &TIMA = m_IO[0x05];
     uint8_t &TMA = m_IO[0x06];
     uint8_t &TAC = m_IO[0x07];
+
+    uint8_t &LCDC = m_IO[0x40];
+    uint8_t &STAT = m_IO[0x41];
+    uint8_t &SCY = m_IO[0x42];
+    uint8_t &SCX = m_IO[0x43];
+    uint8_t &LY = m_IO[0x44];
+    uint8_t &LYC = m_IO[0x45];
+    uint8_t &BGP = m_IO[0x47];
+    uint8_t &OBP0 = m_IO[0x48];
+    uint8_t &OBP1 = m_IO[0x49];
+    uint8_t &WY = m_IO[0x4A];
+    uint8_t &WX = m_IO[0x4B];
 };
 
 class Emulator
@@ -910,6 +935,7 @@ public:
     std::unique_ptr<MemoryController> m_MemControl;
     std::unique_ptr<InterruptManager> m_IntManager;
     std::unique_ptr<Timer> m_Timer;
+    std::unique_ptr<Gpu> m_Gpu;
 
     int m_TotalCycles;
     int m_PrevTotalCycles;
@@ -2268,6 +2294,48 @@ void Timer::Debug_PrintStatus()
     std::cout << std::endl;
 }
 
+Gpu::Gpu(Emulator *emu)
+{
+    m_Emulator = emu;
+}
+
+Gpu::~Gpu()
+{
+    delete m_Emulator;
+}
+
+void Gpu::Reset()
+{
+    m_Emulator->m_MemControl->LCDC = 0x91;
+    m_Emulator->m_MemControl->STAT = 0x85;
+    m_Emulator->m_MemControl->SCY = 0x00;
+    m_Emulator->m_MemControl->SCX = 0x00;
+    m_Emulator->m_MemControl->LY = 0x00; // change to 0x90 if logging is enabled
+    m_Emulator->m_MemControl->LYC = 0x00;
+    m_Emulator->m_MemControl->BGP = 0xFC;
+    m_Emulator->m_MemControl->OBP0 = 0xFF;
+    m_Emulator->m_MemControl->OBP1 = 0xFF;
+    m_Emulator->m_MemControl->WY = 0x00;
+    m_Emulator->m_MemControl->WX = 0x00;
+}
+
+void Gpu::Update(int cycles)
+{
+    // TODO
+}
+
+void Gpu::Debug_PrintStatus()
+{
+    std::cout << "*GPU STATUS*" << std::endl;
+    
+    std::cout << std::endl;
+}
+
+void Gpu::Debug_RenderPPM(const std::string& ppm_fname)
+{
+    // TODO
+}
+
 MemoryController::MemoryController(Emulator *emu)
 {
     m_Emulator = emu;
@@ -2286,21 +2354,6 @@ void MemoryController::Reset()
     m_OAM.fill(0);
     m_IO.fill(0);
     m_HRAM.fill(0);
-
-    // https://gbdev.io/pandocs/Power_Up_Sequence.html
-    // TODO move to PPU class
-    m_IO[0x40] = 0x91; // LCDC
-    m_IO[0x41] = 0x85; // STAT
-    m_IO[0x42] = 0x00; // SCY
-    m_IO[0x43] = 0x00; // SCX
-    m_IO[0x44] = 0x90; // LY - note: usually 0x00 but use 0x90 if logging is enabled
-    m_IO[0x45] = 0x00; // LYC
-    m_IO[0x46] = 0xFF; // DMA
-    m_IO[0x47] = 0xFC; // BGP
-    m_IO[0x48] = 0xFF; // OBP0
-    m_IO[0x49] = 0xFF; // OBP1
-    m_IO[0x4A] = 0x00; // WY
-    m_IO[0x4B] = 0x00; // WX
 }
 
 void MemoryController::LoadROM(const std::string& rom_file)
@@ -2465,6 +2518,7 @@ Emulator::Emulator()
     m_MemControl = std::unique_ptr<MemoryController>(new MemoryController(this));
     m_IntManager = std::unique_ptr<InterruptManager>(new InterruptManager(this));
     m_Timer = std::unique_ptr<Timer>(new Timer(this));
+    m_Gpu = std::unique_ptr<Gpu>(new Gpu(this));
 }
 
 Emulator::~Emulator()
@@ -2476,6 +2530,7 @@ void Emulator::ResetComponents()
     m_Cpu->Reset();
     m_IntManager->Reset();
     m_Timer->Reset();
+    m_Gpu->Reset();
     m_TotalCycles = m_PrevTotalCycles = 0;
 }
 
@@ -2486,6 +2541,7 @@ void Emulator::Update()
         int initial_cycles = m_TotalCycles;
         m_Cpu->Step();
         m_Timer->Update(m_TotalCycles - initial_cycles);
+        m_Gpu->Update(m_TotalCycles - initial_cycles);
 
         // blarggs test - serial output
         if (m_MemControl->ReadByte(0xFF02) == 0x81) {
@@ -2514,6 +2570,7 @@ void Emulator::Debug_Step(std::vector<char>& blargg_serial, int times)
         int initial_cycles = m_TotalCycles;
         m_Cpu->Step();
         m_Timer->Update(m_TotalCycles - initial_cycles);
+        m_Gpu->Update(m_TotalCycles - initial_cycles);
 
         if (m_MemControl->ReadByte(0xFF02) == 0x81) {
             blargg_serial.push_back(m_MemControl->ReadByte(0xFF01));
@@ -2535,6 +2592,7 @@ void Emulator::Debug_PrintEmulatorStatus()
     m_Cpu->Debug_PrintStatus();
     m_IntManager->Debug_PrintStatus();
     m_Timer->Debug_PrintStatus();
+    m_Gpu->Debug_PrintStatus();
 }
 
 int main(int argc, char *argv[])
@@ -2613,6 +2671,10 @@ int main(int argc, char *argv[])
                 else if (str == "timer")
                 {
                     emu->m_Timer->Debug_PrintStatus();
+                }
+                else if (str == "gpu")
+                {
+                    emu->m_Gpu->Debug_PrintStatus();
                 }
             }
             else if (str == "mem")
