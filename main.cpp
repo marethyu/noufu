@@ -2886,7 +2886,8 @@ void Emulator::Debug_Step(std::vector<char>& blargg_serial, int times)
         m_Timer->Update(m_TotalCycles - initial_cycles);
 
         // blarggs test - serial output
-        if (m_MemControl->ReadByte(0xFF02) == 0x81) {
+        if (m_MemControl->ReadByte(0xFF02) == 0x81)
+        {
             blargg_serial.push_back(m_MemControl->ReadByte(0xFF01));
             m_MemControl->WriteByte(0xFF02, 0x0);
         }
