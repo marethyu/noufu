@@ -73,8 +73,6 @@ blargg tests passed:
 
 #include "loguru.hpp"
 
-#define SCREEN_SCALE_FACTOR 3
-
 #define ID_LOADROM 0
 #define ID_EXIT 1
 #define ID_ABOUT 2
@@ -93,17 +91,13 @@ using namespace std::chrono;
 
 #endif
 
-/* TODO make the below three constants class members for Emulator? */
-
-const bool IS_BOOT_ROM_ENABLED = false;
-
-const std::string BOOT_ROM_PATH = "C:/Users/Jimmy/OneDrive/Documents/git/IronBoy/ROMS/Boot/dmg_boot.bin";
-
 #ifndef NDEBUG
 const std::string ROM_FILE_PATH = "../IronBoy/ROMS/blargg_tests/cpu_instrs/individual/02-interrupts.gb";
 #endif
 
 const std::string EMULATOR_NAME = "脳腐";
+
+const std::string CONFIG_FILE_PATH = "config";
 
 // Maximum number of cycles per update
 const int MAX_CYCLES = 70224;         // 154 scanlines * 456 cycles per frame = 70224
@@ -763,6 +757,7 @@ class InterruptManager;
 class Timer;
 class Gpu;
 class MemoryController;
+class EmulatorConfig;
 class Emulator;
 #ifdef NDEBUG
 class GameBoyWin32;
@@ -957,8 +952,8 @@ public:
 
     void Init();
     void Reset() {} // nothing
-    void LoadROM(const std::string& rom_file, bool enableBootROM);
-    void ReloadROM(bool enableBootROM);
+    void LoadROM(const std::string& rom_file);
+    void ReloadROM();
     uint8_t ReadByte(uint16_t address) const;
     uint16_t ReadWord(uint16_t address) const;
     void WriteByte(uint16_t address, uint8_t data);
@@ -992,6 +987,19 @@ public:
     uint8_t &WX = m_IO[0x4B];
 };
 
+class EmulatorConfig
+{
+private:
+    void Init();
+public:
+    EmulatorConfig();
+    ~EmulatorConfig();
+
+    int ScreenScaleFactor;
+    bool EnableBootROM;
+    std::string BootROMPath;
+};
+
 class Emulator
 {
 public:
@@ -1020,6 +1028,8 @@ public:
     std::unique_ptr<Timer> m_Timer;
     std::unique_ptr<Gpu> m_Gpu;
 
+    EmulatorConfig *config;
+
     int m_TotalCycles; // T-cycles
     int m_PrevTotalCycles;
 
@@ -1031,6 +1041,17 @@ public:
 #ifdef NDEBUG
 class GameBoyWin32
 {
+private:
+    Emulator *m_Emulator;
+    SDL_Window *m_Window;
+    SDL_Renderer *m_Renderer;
+    SDL_Texture *m_Texture;
+    HWND hWnd;
+
+    GameBoyWin32();
+    bool CreateSDLWindow();
+
+    static GameBoyWin32 *m_Instance;
 public:
     static GameBoyWin32 *CreateInstance();
     static GameBoyWin32 *GetSingleton();
@@ -1040,17 +1061,6 @@ public:
     void Initialize();
     void DoEmulation();
     void RenderGame();
-private:
-    GameBoyWin32();
-    bool CreateSDLWindow();
-
-    static GameBoyWin32 *m_Instance;
-
-    Emulator *m_Emulator;
-    SDL_Window *m_Window;
-    SDL_Renderer *m_Renderer;
-    SDL_Texture *m_Texture;
-    HWND hWnd;
 };
 #endif
 
@@ -2514,20 +2524,26 @@ void Gpu::Debug_RenderPPM(const std::string& ppm_fname)
 
 void MemoryController::InitBootROM()
 {
-    std::ifstream istream(BOOT_ROM_PATH, std::ios::in | std::ios::binary);
+    std::ifstream istream(m_Emulator->config->BootROMPath, std::ios::in | std::ios::binary);
 
     if (!istream)
     {
-        throw std::system_error(errno, std::system_category(), "failed to open " + BOOT_ROM_PATH);
+        throw std::system_error(errno, std::system_category(), "failed to open " + m_Emulator->config->BootROMPath);
     }
 
     istream.read(reinterpret_cast<char *>(m_BootROM.data()), 0x100);
+
+    istream.close();
 }
 
 MemoryController::MemoryController(Emulator *emu)
 {
     m_Emulator = emu;
-    MemoryController::InitBootROM();
+
+    if (m_Emulator->config->EnableBootROM)
+    {
+        MemoryController::InitBootROM();
+    }
 }
 
 MemoryController::~MemoryController()
@@ -2544,7 +2560,7 @@ void MemoryController::Init()
     std::generate(m_HRAM.begin(), m_HRAM.end(), std::rand);
 }
 
-void MemoryController::LoadROM(const std::string& rom_file, bool enableBootROM)
+void MemoryController::LoadROM(const std::string& rom_file)
 {
     std::ifstream istream(rom_file, std::ios::in | std::ios::binary);
 
@@ -2564,7 +2580,9 @@ void MemoryController::LoadROM(const std::string& rom_file, bool enableBootROM)
 
     istream.read(reinterpret_cast<char *>(m_Cartridge.data()), length);
 
-    if (!enableBootROM)
+    istream.close();
+
+    if (!m_Emulator->config->EnableBootROM)
     {
         m_Emulator->ResetComponents();
     }
@@ -2574,9 +2592,9 @@ void MemoryController::LoadROM(const std::string& rom_file, bool enableBootROM)
     }
 }
 
-void MemoryController::ReloadROM(bool enableBootROM)
+void MemoryController::ReloadROM()
 {
-    if (!enableBootROM)
+    if (!m_Emulator->config->EnableBootROM)
     {
         m_Emulator->ResetComponents();
     }
@@ -2791,8 +2809,42 @@ void MemoryController::Debug_PrintMemoryRange(uint16_t start, uint16_t end)
 }
 #endif
 
+void EmulatorConfig::Init()
+{
+    std::ifstream istream(CONFIG_FILE_PATH, std::ios::in);
+    std::string line;
+    std::string val;
+
+    if (!istream)
+    {
+        throw std::system_error(errno, std::system_category(), "failed to open " + CONFIG_FILE_PATH);
+    }
+
+    std::getline(istream, line);
+    ScreenScaleFactor = stoi(line.substr(line.find("=") + 1));
+
+    std::getline(istream, line);
+    EnableBootROM = stoi(line.substr(line.find("=") + 1));
+
+    std::getline(istream, line);
+    BootROMPath = line.substr(line.find("=") + 1);
+
+    istream.close();
+}
+
+EmulatorConfig::EmulatorConfig()
+{
+    EmulatorConfig::Init();
+}
+
+EmulatorConfig::~EmulatorConfig()
+{
+    
+}
+
 Emulator::Emulator()
 {
+    config = new EmulatorConfig();
     m_Cpu = std::unique_ptr<Cpu>(new Cpu(this));
     m_MemControl = std::unique_ptr<MemoryController>(new MemoryController(this));
     m_IntManager = std::unique_ptr<InterruptManager>(new InterruptManager(this));
@@ -2940,8 +2992,8 @@ bool GameBoyWin32::CreateSDLWindow()
     m_Window = SDL_CreateWindow(EMULATOR_NAME.c_str(),
                                 SDL_WINDOWPOS_UNDEFINED,
                                 SDL_WINDOWPOS_UNDEFINED,
-                                SCREEN_WIDTH * SCREEN_SCALE_FACTOR,
-                                SCREEN_HEIGHT * SCREEN_SCALE_FACTOR,
+                                SCREEN_WIDTH * m_Emulator->config->ScreenScaleFactor,
+                                SCREEN_HEIGHT * m_Emulator->config->ScreenScaleFactor,
                                 SDL_WINDOW_SHOWN);
     if (m_Window == nullptr)
     {
@@ -2991,8 +3043,8 @@ bool GameBoyWin32::CreateSDLWindow()
     SetMenu(hWnd, hMenuBar);
 
     SDL_SetWindowSize(m_Window,
-                      SCREEN_WIDTH * SCREEN_SCALE_FACTOR,
-                      SCREEN_HEIGHT * SCREEN_SCALE_FACTOR); // resize because we just added the menubar
+                      SCREEN_WIDTH * m_Emulator->config->ScreenScaleFactor,
+                      SCREEN_HEIGHT * m_Emulator->config->ScreenScaleFactor); // resize because we just added the menubar
     SDL_EventState(SDL_SYSWMEVENT, SDL_ENABLE);
 
     return true;
@@ -3046,7 +3098,7 @@ void GameBoyWin32::DoEmulation()
 
     unsigned int time2;
 
-    while (!quit)
+    while (true)
     {
         while (SDL_PollEvent(&evt) != 0)
         {
@@ -3074,7 +3126,7 @@ void GameBoyWin32::DoEmulation()
 
                         if(GetOpenFileName(&ofn))
                         {
-                            m_Emulator->m_MemControl->LoadROM(szFileName, IS_BOOT_ROM_ENABLED);
+                            m_Emulator->m_MemControl->LoadROM(szFileName);
                             bROMLoaded = true;
                             bFirstTime = true;
                         }
@@ -3084,7 +3136,7 @@ void GameBoyWin32::DoEmulation()
                         quit = true;
                         break;
                     case ID_ABOUT:
-                        MessageBox(hWnd, TEXT("um..."), TEXT("About IronBoy"), MB_ICONINFORMATION | MB_OK);
+                        MessageBox(hWnd, TEXT("um..."), TEXT("About Noufu"), MB_ICONINFORMATION | MB_OK);
                         break;
                     }
                     break;
@@ -3104,6 +3156,11 @@ void GameBoyWin32::DoEmulation()
             */
                 break;
             }
+        }
+
+        if (quit)
+        {
+            break;
         }
 
         if (bROMLoaded)
@@ -3151,6 +3208,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     gb->Initialize();
     gb->DoEmulation();
 
+    // apparently, adding this line will slow down the shut down process...
+    // delete gb;
+
     return 0;
 }
 #else
@@ -3159,7 +3219,7 @@ int main(int argc, char *argv[])
     Emulator *emu = new Emulator();
 
     emu->InitComponents();
-    emu->m_MemControl->LoadROM(ROM_FILE_PATH /*argv[1]*/, IS_BOOT_ROM_ENABLED);
+    emu->m_MemControl->LoadROM(ROM_FILE_PATH /*argv[1]*/);
 
     std::vector<char> blargg_serial;
     std::string input_str;
@@ -3292,7 +3352,7 @@ int main(int argc, char *argv[])
         else if (str == "reload-rom")
         {
             emu->InitComponents();
-            emu->m_MemControl->ReloadROM(IS_BOOT_ROM_ENABLED);
+            emu->m_MemControl->ReloadROM();
             blargg_serial.clear();
             fout.close();
             fout.open("gblog.txt", std::ofstream::out | std::ofstream::trunc);
