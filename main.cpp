@@ -47,6 +47,7 @@ blargg tests passed:
 */
 // TODO optimize code? proper cli, label memory regions for debugging
 
+#include <algorithm>
 #include <array>
 #include <bitset>
 #include <chrono>
@@ -60,12 +61,17 @@ blargg tests passed:
 #include <vector>
 
 #include <cstdio>
+#include <ctime>
 
 using namespace std::chrono;
 
 // #define NDEBUG
 
+const bool IS_BOOT_ROM_ENABLED = true;
+
 const std::string BOOT_ROM_PATH = "C:/Users/Jimmy/OneDrive/Documents/git/IronBoy/ROMS/Boot/dmg_boot.bin";
+
+const std::string ROM_FILE_PATH = "../IronBoy/ROMS/blargg_tests/cpu_instrs/individual/02-interrupts.gb";
 
 // Maximum number of cycles per update
 const int MAX_CYCLES = 70224;         // 154 scanlines * 456 cycles per frame = 70224
@@ -726,6 +732,7 @@ class Emulator;
 class GBComponent
 {
 public:
+    virtual void Init() = 0;
     virtual void Reset() = 0;
 #ifndef NDEBUG
     virtual void Debug_PrintStatus() = 0;
@@ -795,6 +802,7 @@ public:
     Cpu(Emulator *emu);
     ~Cpu();
 
+    void Init();
     void Reset();
     void Step(); // step a M-cycle
     void HandleInterrupt(int i);
@@ -826,10 +834,11 @@ public:
     InterruptManager(Emulator *emu);
     ~InterruptManager();
 
+    void Init();
+    void Reset();
     bool GetIME();
     void EnableIME();
     void DisableIME();
-    void Reset();
     bool SetHaltMode(); // sets halt mode and determines if halt should be executed or not
     void ResetHaltMode();
     void RequestInterrupt(int i);
@@ -850,14 +859,14 @@ public:
     Timer(Emulator *emu);
     ~Timer();
 
-    uint16_t DIV;
-
+    void Init();
     void Reset();
     void Update(int cycles);
     void UpdateCounter();
     int TimerEnable();
     int ClockSelect();
 
+    uint16_t DIV;
 #ifndef NDEBUG
     void Debug_PrintStatus();
 #endif
@@ -871,6 +880,7 @@ public:
     Gpu(Emulator *emu);
     ~Gpu();
 
+    void Init();
     void Reset();
     void Update(int cycles);
 
@@ -902,8 +912,10 @@ public:
     MemoryController(Emulator *emu);
     ~MemoryController();
 
-    void Reset();
+    void Init();
+    void Reset() {} // nothing
     void LoadROM(const std::string& rom_file, bool enableBootROM);
+    void ReloadROM(bool enableBootROM);
     uint8_t ReadByte(uint16_t address) const;
     uint16_t ReadWord(uint16_t address) const;
     void WriteByte(uint16_t address, uint8_t data);
@@ -943,6 +955,7 @@ public:
     Emulator();
     ~Emulator();
 
+    void InitComponents();
     void ResetComponents();
     void Update();
     void Tick(); // + 1 M-cycle
@@ -1282,14 +1295,19 @@ void Cpu::HandlePrefixCB()
 Cpu::Cpu(Emulator *emu)
 {
     m_Emulator = emu;
-    PC = 0x0;
-    bHalted = false;
-    haltBug = false;
 }
 
 Cpu::~Cpu()
 {
     delete m_Emulator;
+}
+
+void Cpu::Init()
+{
+    ei_delay_cnt = 0;
+    PC = 0x0;
+    bHalted = false;
+    haltBug = false;
 }
 
 void Cpu::Reset()
@@ -2158,15 +2176,27 @@ void Cpu::Debug_LogState()
 InterruptManager::InterruptManager(Emulator *emu)
 {
     m_Emulator = emu;
+}
+
+InterruptManager::~InterruptManager()
+{
+    delete m_Emulator;
+}
+
+void InterruptManager::Init()
+{
     m_IME = false;
     haltMode = -1;
     m_Emulator->m_MemControl->IF = 0x0;
     m_Emulator->m_MemControl->IE = 0x0;
 }
 
-InterruptManager::~InterruptManager()
+void InterruptManager::Reset()
 {
-    delete m_Emulator;
+    m_IME = false;
+    haltMode = -1;
+    m_Emulator->m_MemControl->IF = 0xE0;
+    m_Emulator->m_MemControl->IE = 0;
 }
 
 bool InterruptManager::GetIME()
@@ -2182,14 +2212,6 @@ void InterruptManager::EnableIME()
 void InterruptManager::DisableIME()
 {
     m_IME = false;
-}
-
-void InterruptManager::Reset()
-{
-    m_IME = false;
-    haltMode = -1;
-    m_Emulator->m_MemControl->IF = 0xE0;
-    m_Emulator->m_MemControl->IE = 0;
 }
 
 bool InterruptManager::SetHaltMode()
@@ -2260,16 +2282,20 @@ void InterruptManager::Debug_PrintStatus()
 Timer::Timer(Emulator *emu)
 {
     m_Emulator = emu;
-    DIV = 0x00;
-    m_Emulator->m_MemControl->TIMA = 0x00;
-    m_Emulator->m_MemControl->TMA = 0x00;
-    m_Emulator->m_MemControl->TAC = 0x00;
-    Timer::UpdateCounter();
 }
 
 Timer::~Timer()
 {
     delete m_Emulator;
+}
+
+void Timer::Init()
+{
+    DIV = 0x00;
+    m_Emulator->m_MemControl->TIMA = 0x00;
+    m_Emulator->m_MemControl->TMA = 0x00;
+    m_Emulator->m_MemControl->TAC = 0x00;
+    Timer::UpdateCounter();
 }
 
 void Timer::Reset()
@@ -2342,16 +2368,20 @@ void Timer::Debug_PrintStatus()
 Gpu::Gpu(Emulator *emu)
 {
     m_Emulator = emu;
-#ifndef NDEBUG
-    m_Emulator->m_MemControl->LY = 0x90;
-#else
-    m_Emulator->m_MemControl->LY = 0x90; // TODO change to 0x00 after gpu implementation is complete
-#endif
 }
 
 Gpu::~Gpu()
 {
     delete m_Emulator;
+}
+
+void Gpu::Init()
+{
+#ifndef NDEBUG
+    m_Emulator->m_MemControl->LY = 0x90;
+#else
+    m_Emulator->m_MemControl->LY = 0x90; // TODO change to 0x00 after gpu implementation is complete
+#endif
 }
 
 void Gpu::Reset()
@@ -2407,12 +2437,6 @@ void MemoryController::InitBootROM()
 MemoryController::MemoryController(Emulator *emu)
 {
     m_Emulator = emu;
-    m_Cartridge.fill(0);
-    m_VRAM.fill(0);
-    m_WRAM.fill(0);
-    m_OAM.fill(0);
-    m_IO.fill(0);
-    m_HRAM.fill(0);
     MemoryController::InitBootROM();
 }
 
@@ -2421,9 +2445,14 @@ MemoryController::~MemoryController()
     delete m_Emulator;
 }
 
-void MemoryController::Reset()
+void MemoryController::Init()
 {
-    
+    std::srand(unsigned(std::time(nullptr)));
+    std::generate(m_VRAM.begin(), m_VRAM.end(), std::rand);
+    std::generate(m_WRAM.begin(), m_WRAM.end(), std::rand);
+    std::generate(m_OAM.begin(), m_OAM.end(), std::rand);
+    m_IO.fill(0);
+    std::generate(m_HRAM.begin(), m_HRAM.end(), std::rand);
 }
 
 void MemoryController::LoadROM(const std::string& rom_file, bool enableBootROM)
@@ -2446,6 +2475,18 @@ void MemoryController::LoadROM(const std::string& rom_file, bool enableBootROM)
 
     istream.read(reinterpret_cast<char *>(m_Cartridge.data()), length);
 
+    if (!enableBootROM)
+    {
+        m_Emulator->ResetComponents();
+    }
+    else
+    {
+        inBootMode = true;
+    }
+}
+
+void MemoryController::ReloadROM(bool enableBootROM)
+{
     if (!enableBootROM)
     {
         m_Emulator->ResetComponents();
@@ -2640,11 +2681,19 @@ Emulator::Emulator()
     m_IntManager = std::unique_ptr<InterruptManager>(new InterruptManager(this));
     m_Timer = std::unique_ptr<Timer>(new Timer(this));
     m_Gpu = std::unique_ptr<Gpu>(new Gpu(this));
-    m_TotalCycles = m_PrevTotalCycles = 0;
 }
 
 Emulator::~Emulator()
 {}
+
+void Emulator::InitComponents()
+{
+    m_Cpu->Init();
+    m_IntManager->Init();
+    m_Timer->Init();
+    m_Gpu->Init();
+    m_TotalCycles = m_PrevTotalCycles = 0;
+}
 
 void Emulator::ResetComponents()
 {
@@ -2722,7 +2771,8 @@ int main(int argc, char *argv[])
 {
     Emulator *emu = new Emulator();
 
-    emu->m_MemControl->LoadROM("../IronBoy/ROMS/blargg_tests/cpu_instrs/individual/02-interrupts.gb" /*argv[1]*/, true);
+    emu->InitComponents();
+    emu->m_MemControl->LoadROM(ROM_FILE_PATH /*argv[1]*/, IS_BOOT_ROM_ENABLED);
 
 #ifdef NDEBUG
     uint64_t initial_ms = unix_epoch_millis();
@@ -2869,7 +2919,8 @@ int main(int argc, char *argv[])
         }
         else if (str == "reload-rom")
         {
-            emu->ResetComponents();
+            emu->InitComponents();
+            emu->m_MemControl->ReloadROM(IS_BOOT_ROM_ENABLED);
             blargg_serial.clear();
             fout.close();
             fout.open("gblog.txt", std::ofstream::out | std::ofstream::trunc);
