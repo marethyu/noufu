@@ -1,4 +1,6 @@
-// Gameboy skeleton with debugger
+// Gameboy
+/* GUI compile: g++ main.cpp loguru.cpp -o main -D NDEBUG -std=c++14 -lSDL2 -lcomdlg32 -mwindows -Wl,-subsystem,windows --machine-windows */
+/* CLI compile: g++ main.cpp -o main */
 /*
 Stage 1: Pass Blargg's CPU tests (complete)
 Stage 2: Refactor code (make seperate files for each class) and implement PPU to run Boot rom (don't forgot to make a Makefile)
@@ -51,29 +53,57 @@ blargg tests passed:
 
 #include <algorithm>
 #include <array>
-#include <bitset>
-#include <chrono>
 #include <fstream>
-#include <iomanip>
-#include <iostream>
 #include <memory>
 #include <stdexcept>
-#include <sstream>
 #include <string>
 #include <vector>
 
-#include <cstdio>
 #include <ctime>
+
+#define SCREEN_WIDTH 160
+#define SCREEN_HEIGHT 144
+
+#ifdef NDEBUG
+
+#include <Windows.h>
+
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_syswm.h>
+
+#include "loguru.hpp"
+
+#define SCREEN_SCALE_FACTOR 3
+
+#define ID_LOADROM 0
+#define ID_EXIT 1
+#define ID_ABOUT 2
+
+#else
+
+#include <bitset>
+#include <chrono>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+
+#include <cstdio>
 
 using namespace std::chrono;
 
-// #define NDEBUG
+#endif
+
+/* TODO make the below three constants class members for Emulator? */
 
 const bool IS_BOOT_ROM_ENABLED = false;
 
 const std::string BOOT_ROM_PATH = "C:/Users/Jimmy/OneDrive/Documents/git/IronBoy/ROMS/Boot/dmg_boot.bin";
 
+#ifndef NDEBUG
 const std::string ROM_FILE_PATH = "../IronBoy/ROMS/blargg_tests/cpu_instrs/individual/02-interrupts.gb";
+#endif
+
+const std::string EMULATOR_NAME = "脳腐";
 
 // Maximum number of cycles per update
 const int MAX_CYCLES = 70224;         // 154 scanlines * 456 cycles per frame = 70224
@@ -688,7 +718,6 @@ enum
 
 #ifndef NDEBUG
 std::ofstream fout;
-#endif
 
 inline uint64_t unix_epoch_millis()
 {
@@ -722,6 +751,11 @@ std::string int_to_bin8(T i, bool prefixed=true)
     stream << (prefixed ? "0b" : "") << std::bitset<8>(i);
     return stream.str();
 }
+#endif
+
+#ifdef NDEBUG
+typedef void (*RenderGraphics)();
+#endif
 
 class GBComponent;
 class Cpu;
@@ -730,6 +764,9 @@ class Timer;
 class Gpu;
 class MemoryController;
 class Emulator;
+#ifdef NDEBUG
+class GameBoyWin32;
+#endif
 
 class GBComponent
 {
@@ -879,8 +916,6 @@ public:
 class Gpu : GBComponent
 {
 private:
-    std::vector<uint8_t> m_Display;
-
     Emulator *m_Emulator;
 public:
     Gpu(Emulator *emu);
@@ -889,6 +924,8 @@ public:
     void Init();
     void Reset();
     void Update(int cycles);
+
+    std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> m_Pixels;
 
 #ifndef NDEBUG
     void Debug_PrintStatus();
@@ -966,6 +1003,10 @@ public:
     void Update();
     void Tick(); // + 1 M-cycle
 
+#ifdef NDEBUG
+    void SetRender(RenderGraphics render);
+#endif
+
 #ifndef NDEBUG
     void Debug_Step(std::vector<char>& blargg_serial, int times);
     void Debug_StepTill(std::vector<char>& blargg_serial, uint16_t x);
@@ -981,7 +1022,37 @@ public:
 
     int m_TotalCycles; // T-cycles
     int m_PrevTotalCycles;
+
+#ifdef NDEBUG
+    RenderGraphics Render;
+#endif
 };
+
+#ifdef NDEBUG
+class GameBoyWin32
+{
+public:
+    static GameBoyWin32 *CreateInstance();
+    static GameBoyWin32 *GetSingleton();
+
+    ~GameBoyWin32();
+
+    void Initialize();
+    void DoEmulation();
+    void RenderGame();
+private:
+    GameBoyWin32();
+    bool CreateSDLWindow();
+
+    static GameBoyWin32 *m_Instance;
+
+    Emulator *m_Emulator;
+    SDL_Window *m_Window;
+    SDL_Renderer *m_Renderer;
+    SDL_Texture *m_Texture;
+    HWND hWnd;
+};
+#endif
 
 uint8_t Cpu::ReadByte(uint16_t address) const
 {
@@ -1288,11 +1359,13 @@ void Cpu::HandlePrefixCB()
     }
     default:
     {
-        std::cerr << "Unimplemented opcode: " << int_to_hex(opcode) << std::endl;
 #ifndef NDEBUG
+        std::cerr << "Opcode: " << int_to_hex(opcode) << std::endl;
         Cpu::Debug_PrintStatus();
+#else
+        LOG_IF_F(ERROR, true, "Unknown opcode: %02X", opcode);
 #endif
-        throw std::runtime_error("^^^");
+        throw std::runtime_error("Opcode unimplemented!");
         break;
     }
     }
@@ -2030,11 +2103,13 @@ void Cpu::Step()
     }
     default:
     {
-        std::cerr << "Unimplemented opcode: " << int_to_hex(opcode) << std::endl;
 #ifndef NDEBUG
+        std::cerr << "Opcode: " << int_to_hex(opcode) << std::endl;
         Cpu::Debug_PrintStatus();
+#else
+        LOG_IF_F(ERROR, true, "Unknown opcode: %02X", opcode);
 #endif
-        throw std::runtime_error("^^^");
+        throw std::runtime_error("Opcode unimplemented!");
         break;
     }
     }
@@ -2238,7 +2313,11 @@ bool InterruptManager::SetHaltMode()
         return false;
     }
 
+#ifndef NDEBUG
     std::cerr << "Yo nigga, InterruptManager::SetHaltMode has gone mad!" << std::endl;
+#else
+    LOG_IF_F(WARNING, true, "Yo nigga, InterruptManager::SetHaltMode has gone mad!");
+#endif
     return false;
 }
 
@@ -2392,6 +2471,7 @@ void Gpu::Init()
 #else
     m_Emulator->m_MemControl->LY = 0x90; // TODO change to 0x00 after gpu implementation is complete
 #endif
+    std::fill(m_Pixels.begin(), m_Pixels.end(), 0);
 }
 
 void Gpu::Reset()
@@ -2457,7 +2537,6 @@ MemoryController::~MemoryController()
 
 void MemoryController::Init()
 {
-    std::srand(unsigned(std::time(nullptr)));
     std::generate(m_VRAM.begin(), m_VRAM.end(), std::rand);
     std::generate(m_WRAM.begin(), m_WRAM.end(), std::rand);
     std::generate(m_OAM.begin(), m_OAM.end(), std::rand);
@@ -2523,7 +2602,11 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
     }
     else if (address >= 0xA000 && address < 0xC000)
     {
+#ifndef NDEBUG
         std::cout << "WARNING: Attempted to read from $A000-$BFFF; Probably need to implement MBC; address=" << int_to_hex(address) << std::endl;
+#else
+        LOG_IF_F(WARNING, true, "Attempted to read from $A000-$BFFF; Probably need to implement MBC; address=%04X", address);
+#endif
         return 0x00;
     }
     else if (address >= 0xC000 && address < 0xE000)
@@ -2540,7 +2623,11 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
     }
     else if (address >= 0xFEA0 && address < 0xFF00)
     {
+#ifndef NDEBUG
         std::cout << "WARNING: Attempted to read from $FEA0-$FEFF; address=" << int_to_hex(address) << std::endl;
+#else
+        LOG_IF_F(WARNING, true, "Attempted to read from $FEA0-$FEFF; address=%04X", address);
+#endif
         return 0x00;
     }
     else if (address == 0xFF04)
@@ -2561,11 +2648,13 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
     }
     else
     {
-        std::cerr << "MemoryController::ReadByte: Invalid address range: " << int_to_hex(address) << std::endl;
 #ifndef NDEBUG
+        std::cerr << "MemoryController::ReadByte: Invalid address range: " << int_to_hex(address) << std::endl;
         m_Emulator->m_Cpu->Debug_PrintStatus();
+#else
+        LOG_IF_F(ERROR, true, "MemoryController::ReadByte: Invalid address range: %04X", address);
 #endif
-        throw std::runtime_error("^^^");
+        throw std::runtime_error("Bad memory access!");
         return 0x0;
     }
 }
@@ -2581,11 +2670,19 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
 {
     if (inBootMode && address <= 0xFF)
     {
+#ifndef NDEBUG
         std::cout << "WARNING: Attempted to write to $00-$FF; address=" << int_to_hex(address) << std::endl;
+#else
+        LOG_IF_F(WARNING, true, "Attempted to write to $00-$FF; address=%04X", address);
+#endif
     }
     else if (address < 0x8000)
     {
+#ifndef NDEBUG
         std::cout << "WARNING: Attempted to write to $0000-$7FFF; address=" << int_to_hex(address) << std::endl;
+#else
+        LOG_IF_F(WARNING, true, "Attempted to write to $0000-$7FFF; address=%04X", address);
+#endif
     }
     else if (address >= 0x8000 && address < 0xA000)
     {
@@ -2593,7 +2690,11 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else if (address >= 0xA000 && address < 0xC000)
     {
+#ifndef NDEBUG
         std::cout << "WARNING: Attempted to write to $A000-$BFFF; Probably need to implement MBC; address=" << int_to_hex(address) << std::endl;
+#else
+        LOG_IF_F(WARNING, true, "Attempted to write to $A000-$BFFF; Probably need to implement MBC; address=%04X", address);
+#endif
     }
     else if (address >= 0xC000 && address < 0xE000)
     {
@@ -2609,7 +2710,11 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else if (address >= 0xFEA0 && address < 0xFF00)
     {
+#ifndef NDEBUG
         std::cout << "WARNING: Attempted to write to $FEA0-$FEFF; address=" << int_to_hex(address) << std::endl;
+#else
+        LOG_IF_F(WARNING, true, "Attempted to write to $FEA0-$FEFF; address=%04X", address);
+#endif
     }
     else if (address == 0xFF04)
     {
@@ -2646,11 +2751,13 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else
     {
-        std::cerr << "MemoryController::WriteByte: Invalid address range: " << int_to_hex(address) << std::endl;
 #ifndef NDEBUG
+        std::cerr << "MemoryController::WriteByte: Invalid address range: " << int_to_hex(address) << std::endl;
         m_Emulator->m_Cpu->Debug_PrintStatus();
+#else
+        LOG_IF_F(ERROR, true, "MemoryController::WriteByte: Invalid address range: %04X", address);
 #endif
-        throw std::runtime_error("^^^");
+        throw std::runtime_error("Bad memory access!");
     }
 }
 
@@ -2722,21 +2829,46 @@ void Emulator::Update()
         m_Cpu->Step();
         m_Gpu->Update(m_TotalCycles - initial_cycles);
         m_Timer->Update(m_TotalCycles - initial_cycles);
-
-        // blarggs test - serial output
-        if (m_MemControl->ReadByte(0xFF02) == 0x81) {
-            std::cout << m_MemControl->ReadByte(0xFF01);
-            m_MemControl->WriteByte(0xFF02, 0x0);
-        }
     }
 
     m_PrevTotalCycles = m_TotalCycles;
+#ifdef NDEBUG
+    // TEST
+    int w = SCREEN_WIDTH;
+    int h = SCREEN_HEIGHT;
+
+    for (int i = 0; i < h; i++)
+    {
+        for (int j = 0; j < w; j++)
+        {
+            int offset = i * w * 4 + j * 4;
+
+            int r = std::rand() % 256;
+            int g = std::rand() % 256;
+            int b = std::rand() % 256;
+
+            m_Gpu->m_Pixels[offset] = b;
+            m_Gpu->m_Pixels[offset + 1] = g;
+            m_Gpu->m_Pixels[offset + 2] = r;
+            m_Gpu->m_Pixels[offset + 3] = 255;
+        }
+    }
+
+    Render();
+#endif
 }
 
 void Emulator::Tick()
 {
     m_TotalCycles += 4;
 }
+
+#ifdef NDEBUG
+void Emulator::SetRender(RenderGraphics render)
+{
+    Render = render;
+}
+#endif
 
 #ifndef NDEBUG
 void Emulator::Debug_Step(std::vector<char>& blargg_serial, int times)
@@ -2753,6 +2885,7 @@ void Emulator::Debug_Step(std::vector<char>& blargg_serial, int times)
         m_Gpu->Update(m_TotalCycles - initial_cycles);
         m_Timer->Update(m_TotalCycles - initial_cycles);
 
+        // blarggs test - serial output
         if (m_MemControl->ReadByte(0xFF02) == 0x81) {
             blargg_serial.push_back(m_MemControl->ReadByte(0xFF01));
             m_MemControl->WriteByte(0xFF02, 0x0);
@@ -2777,6 +2910,249 @@ void Emulator::Debug_PrintEmulatorStatus()
 }
 #endif
 
+#ifdef NDEBUG
+static void DoRender()
+{
+    GameBoyWin32 *gb = GameBoyWin32::GetSingleton();
+    gb->RenderGame();
+}
+
+GameBoyWin32::GameBoyWin32()
+{
+    m_Emulator = new Emulator();
+    m_Emulator->SetRender(DoRender);
+
+    if (!GameBoyWin32::CreateSDLWindow())
+    {
+        MessageBox(nullptr, TEXT("SDL window cannot be created."), TEXT("Error"), MB_OK | MB_ICONERROR);
+        std::exit(1);
+    }
+}
+
+bool GameBoyWin32::CreateSDLWindow()
+{
+    if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
+    {
+        return false;
+    }
+
+    m_Window = SDL_CreateWindow(EMULATOR_NAME.c_str(),
+                                SDL_WINDOWPOS_UNDEFINED,
+                                SDL_WINDOWPOS_UNDEFINED,
+                                SCREEN_WIDTH * SCREEN_SCALE_FACTOR,
+                                SCREEN_HEIGHT * SCREEN_SCALE_FACTOR,
+                                SDL_WINDOW_SHOWN);
+    if (m_Window == nullptr)
+    {
+        return false;
+    }
+
+    m_Renderer = SDL_CreateRenderer(m_Window,
+                                    -1,
+                                    SDL_RENDERER_ACCELERATED);
+    if (m_Renderer == nullptr)
+    {
+        return false;
+    }
+
+    m_Texture = SDL_CreateTexture(m_Renderer,
+                                  SDL_PIXELFORMAT_ARGB8888,
+                                  SDL_TEXTUREACCESS_STREAMING,
+                                  SCREEN_WIDTH,
+                                  SCREEN_HEIGHT);
+    if (m_Texture == nullptr)
+    {
+        return false;
+    }
+
+    SDL_SysWMinfo info;
+    SDL_VERSION(&info.version);
+
+    if (!SDL_GetWindowWMInfo(m_Window, &info))
+    {
+        return false;
+    }
+
+    hWnd = info.info.win.window;
+
+    HMENU hMenuBar = CreateMenu();
+    HMENU hFile = CreatePopupMenu();
+    HMENU hHelp = CreatePopupMenu();
+
+    AppendMenu(hMenuBar, MF_POPUP, (UINT_PTR) hFile, "File");
+    AppendMenu(hMenuBar, MF_POPUP, (UINT_PTR) hHelp, "Help");
+
+    AppendMenu(hFile, MF_STRING, ID_LOADROM, "Load ROM");
+    AppendMenu(hFile, MF_STRING, ID_EXIT, "Exit");
+
+    AppendMenu(hHelp, MF_STRING, ID_ABOUT, "About");
+
+    SetMenu(hWnd, hMenuBar);
+
+    SDL_SetWindowSize(m_Window,
+                      SCREEN_WIDTH * SCREEN_SCALE_FACTOR,
+                      SCREEN_HEIGHT * SCREEN_SCALE_FACTOR); // resize because we just added the menubar
+    SDL_EventState(SDL_SYSWMEVENT, SDL_ENABLE);
+
+    return true;
+}
+
+GameBoyWin32 *GameBoyWin32::m_Instance = 0;
+
+GameBoyWin32 *GameBoyWin32::CreateInstance()
+{
+    if (m_Instance == 0)
+    {
+        m_Instance = new GameBoyWin32();
+    }
+
+    return m_Instance;
+}
+
+GameBoyWin32 *GameBoyWin32::GetSingleton()
+{
+    return m_Instance;
+}
+
+GameBoyWin32::~GameBoyWin32()
+{
+    delete m_Emulator;
+
+    SDL_DestroyTexture(m_Texture);
+    m_Texture = nullptr;
+
+    SDL_DestroyRenderer(m_Renderer);
+    m_Renderer = nullptr;
+
+    SDL_DestroyWindow(m_Window);
+    m_Window = nullptr;
+
+    SDL_Quit();
+}
+
+void GameBoyWin32::Initialize()
+{
+    m_Emulator->InitComponents();
+}
+
+void GameBoyWin32::DoEmulation()
+{
+    bool bFirstTime = true;
+    bool bROMLoaded = false;
+    bool quit = false;
+
+    SDL_Event evt;
+
+    unsigned int time2;
+
+    while (!quit)
+    {
+        while (SDL_PollEvent(&evt) != 0)
+        {
+            switch (evt.type)
+            {
+            case SDL_SYSWMEVENT:
+                switch (evt.syswm.msg->msg.win.msg)
+                {
+                case WM_COMMAND:
+                    switch (LOWORD(evt.syswm.msg->msg.win.wParam))
+                    {
+                    case ID_LOADROM:
+                    {
+                        OPENFILENAME ofn;
+                        char szFileName[MAX_PATH] = "";
+                        ZeroMemory(&ofn, sizeof(ofn));
+
+                        ofn.lStructSize = sizeof(ofn);
+                        ofn.hwndOwner = hWnd;
+                        ofn.lpstrFilter = "ROM files (*.gb)\0*.gb\0";
+                        ofn.lpstrFile = szFileName;
+                        ofn.nMaxFile = MAX_PATH;
+                        ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+                        ofn.lpstrDefExt = "gb";
+
+                        if(GetOpenFileName(&ofn))
+                        {
+                            m_Emulator->m_MemControl->LoadROM(szFileName, IS_BOOT_ROM_ENABLED);
+                            bROMLoaded = true;
+                            bFirstTime = true;
+                        }
+                        break;
+                    }
+                    case ID_EXIT:
+                        quit = true;
+                        break;
+                    case ID_ABOUT:
+                        MessageBox(hWnd, TEXT("um..."), TEXT("About IronBoy"), MB_ICONINFORMATION | MB_OK);
+                        break;
+                    }
+                    break;
+                }
+                break;
+                break;
+            case SDL_WINDOWEVENT_CLOSE:
+                evt.type = SDL_QUIT;
+                SDL_PushEvent(&evt);
+                break;
+            case SDL_QUIT:
+                quit = true;
+                break;
+            /*
+            default:
+                GameBoyWin32::HandleInput(evt);
+            */
+                break;
+            }
+        }
+
+        if (bROMLoaded)
+        {
+            if (bFirstTime)
+            {
+                time2 = SDL_GetTicks();
+                bFirstTime = false;
+            }
+
+            unsigned int current = SDL_GetTicks();
+
+            if ((time2 + UPDATE_INTERVAL) < current)
+            {
+                m_Emulator->Update();
+                time2 = current ;
+            }
+        }
+        else
+        {
+            GameBoyWin32::RenderGame();
+        }
+    }
+}
+
+void GameBoyWin32::RenderGame()
+{
+    SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 255);
+    SDL_RenderClear(m_Renderer);
+    SDL_UpdateTexture(m_Texture, nullptr, m_Emulator->m_Gpu->m_Pixels.data(), SCREEN_WIDTH * 4);
+    SDL_RenderCopy(m_Renderer, m_Texture, nullptr, nullptr);
+    SDL_RenderPresent(m_Renderer);
+}
+#endif
+
+#ifdef NDEBUG
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+{
+    std::srand(unsigned(std::time(nullptr)));
+
+    loguru::init(__argc, __argv);
+    loguru::add_file("emulation_log.txt", loguru::Append, loguru::Verbosity_MAX);
+
+    GameBoyWin32 *gb = GameBoyWin32::CreateInstance();
+    gb->Initialize();
+    gb->DoEmulation();
+
+    return 0;
+}
+#else
 int main(int argc, char *argv[])
 {
     Emulator *emu = new Emulator();
@@ -2784,25 +3160,10 @@ int main(int argc, char *argv[])
     emu->InitComponents();
     emu->m_MemControl->LoadROM(ROM_FILE_PATH /*argv[1]*/, IS_BOOT_ROM_ENABLED);
 
-#ifdef NDEBUG
-    uint64_t initial_ms = unix_epoch_millis();
-    uint64_t millis = 0;
-
-    while (true)
-    {
-        uint64_t current_ms = unix_epoch_millis() - initial_ms;
-
-        if (current_ms > (millis + UPDATE_INTERVAL))
-        {
-            emu->Update();
-            millis = current_ms;
-        }
-    }
-#else
     std::vector<char> blargg_serial;
     std::string input_str;
 
-    std::cout << "Noufu - debug mode enabled" << std::endl;
+    std::cout << "Noufu - cli debugger mode" << std::endl;
 
     fout.open("gblog.txt", std::ofstream::out | std::ofstream::trunc);
 
@@ -2938,7 +3299,7 @@ int main(int argc, char *argv[])
     }
 
     fout.close();
-#endif
 
     return 0;
 }
+#endif
