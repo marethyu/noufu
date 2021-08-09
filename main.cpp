@@ -2,8 +2,9 @@
 /*
 Stage 1: Pass Blargg's CPU tests (complete)
 Stage 2: Refactor code (make seperate files for each class) and implement PPU to run Boot rom (don't forgot to make a Makefile)
-Stage 3: Pass other Blargg's tests and make sure it can run Tetris without problems
-Stage 4: Implement a seperate class for cartridge with basic MBC support and make sure it can run Mario
+Stage 3: Pass other Blargg's tests (mem_timing.gb, mem_timing2.gb, halt_bug.gb)
+Stage 4: Make sure it can run Tetris without problems
+Stage 5: Implement a seperate class for cartridge with basic MBC support and make sure it can run Mario
 */
 /*
 debug cmds:
@@ -42,10 +43,11 @@ blargg tests passed:
 - 09-op r,r.gb
 - 10-bit ops.gb
 - 11-op a,(hl).gb
+- instr_timing.gb
 
 **halt is taking too long... perhaps it will be solved after PPU implementation is complete...
 */
-// TODO optimize code? proper cli, label memory regions for debugging
+// TODO optimize code? proper cli, label memory regions for debugging, proper ppu with pixel FIFO
 
 #include <algorithm>
 #include <array>
@@ -67,7 +69,7 @@ using namespace std::chrono;
 
 // #define NDEBUG
 
-const bool IS_BOOT_ROM_ENABLED = true;
+const bool IS_BOOT_ROM_ENABLED = false;
 
 const std::string BOOT_ROM_PATH = "C:/Users/Jimmy/OneDrive/Documents/git/IronBoy/ROMS/Boot/dmg_boot.bin";
 
@@ -849,11 +851,13 @@ public:
 #endif
 };
 
+// TODO fix it so it can run instr_timing.gb
 class Timer : GBComponent
 {
 private:
     Emulator *m_Emulator;
 
+    int m_Freq;
     int m_Counter;
 public:
     Timer(Emulator *emu);
@@ -862,7 +866,7 @@ public:
     void Init();
     void Reset();
     void Update(int cycles);
-    void UpdateCounter();
+    void UpdateFreq();
     int TimerEnable();
     int ClockSelect();
 
@@ -875,6 +879,8 @@ public:
 class Gpu : GBComponent
 {
 private:
+    std::vector<uint8_t> m_Display;
+
     Emulator *m_Emulator;
 public:
     Gpu(Emulator *emu);
@@ -973,7 +979,7 @@ public:
     std::unique_ptr<Timer> m_Timer;
     std::unique_ptr<Gpu> m_Gpu;
 
-    int m_TotalCycles;
+    int m_TotalCycles; // T-cycles
     int m_PrevTotalCycles;
 };
 
@@ -2295,7 +2301,8 @@ void Timer::Init()
     m_Emulator->m_MemControl->TIMA = 0x00;
     m_Emulator->m_MemControl->TMA = 0x00;
     m_Emulator->m_MemControl->TAC = 0x00;
-    Timer::UpdateCounter();
+    Timer::UpdateFreq();
+    m_Counter = 0;
 }
 
 void Timer::Reset()
@@ -2304,7 +2311,8 @@ void Timer::Reset()
     m_Emulator->m_MemControl->TIMA = 0x00;
     m_Emulator->m_MemControl->TMA = 0x00;
     m_Emulator->m_MemControl->TAC = 0xF8;
-    Timer::UpdateCounter();
+    Timer::UpdateFreq();
+    m_Counter = 0;
 }
 
 void Timer::Update(int cycles)
@@ -2313,12 +2321,12 @@ void Timer::Update(int cycles)
 
     if (Timer::TimerEnable())
     {
-        m_Counter -= cycles;
+        m_Counter += cycles;
 
-        if (m_Counter <= 0)
+        Timer::UpdateFreq();
+
+        while (m_Counter >= m_Freq)
         {
-            Timer::UpdateCounter();
-
             if (m_Emulator->m_MemControl->TIMA < 0xFF)
             {
                 m_Emulator->m_MemControl->TIMA++;
@@ -2328,18 +2336,20 @@ void Timer::Update(int cycles)
                 m_Emulator->m_MemControl->TIMA = m_Emulator->m_MemControl->TMA;
                 m_Emulator->m_IntManager->RequestInterrupt(INT_TIMER);
             }
+
+            m_Counter -= m_Freq;
         }
     }
 }
 
-void Timer::UpdateCounter()
+void Timer::UpdateFreq()
 {
     switch (Timer::ClockSelect())
     {
-    case 0: m_Counter = 1024; break;
-    case 1: m_Counter = 16;   break;
-    case 2: m_Counter = 64;   break;
-    case 3: m_Counter = 256;  break;
+    case 0: m_Freq = 1024; break;
+    case 1: m_Freq = 16;   break;
+    case 2: m_Freq = 64;   break;
+    case 3: m_Freq = 256;  break;
     }
 }
 
@@ -2613,7 +2623,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
 
         if (oldfreq != newfreq)
         {
-            m_Emulator->m_Timer->UpdateCounter();
+            m_Emulator->m_Timer->UpdateFreq();
         }
     }
     else if (inBootMode && address == 0xFF50)
@@ -2710,8 +2720,8 @@ void Emulator::Update()
     {
         int initial_cycles = m_TotalCycles;
         m_Cpu->Step();
-        m_Timer->Update(m_TotalCycles - initial_cycles);
         m_Gpu->Update(m_TotalCycles - initial_cycles);
+        m_Timer->Update(m_TotalCycles - initial_cycles);
 
         // blarggs test - serial output
         if (m_MemControl->ReadByte(0xFF02) == 0x81) {
@@ -2740,8 +2750,8 @@ void Emulator::Debug_Step(std::vector<char>& blargg_serial, int times)
 
         int initial_cycles = m_TotalCycles;
         m_Cpu->Step();
-        m_Timer->Update(m_TotalCycles - initial_cycles);
         m_Gpu->Update(m_TotalCycles - initial_cycles);
+        m_Timer->Update(m_TotalCycles - initial_cycles);
 
         if (m_MemControl->ReadByte(0xFF02) == 0x81) {
             blargg_serial.push_back(m_MemControl->ReadByte(0xFF01));
