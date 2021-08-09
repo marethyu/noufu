@@ -1,0 +1,32 @@
+ppu implementation
+change title depending on cartridge label
+pass other blaarg tests
+sound
+serial communication
+debug window
+save state
+double speed mode
+stop/pause emulation
+code refactoring
+organize files
+battery
+mbcs
+ppu fifo
+custom startup logo
+icon
+options 4 shades of colour (green, grey, violet)
+gb color emulation
+screenshot feature
+config file more options (debug mode on/off, what shade of color, cgb mode on/off, input settings, lcd display size)
+add folders (States, Boot)
+wide screen with viewport at center (give preview in background map)
+rewind https://binji.github.io/posts/binjgb-rewind/
+just in time compiler
+ROM file reader
+gameboy task scheduler
+log file - print emulator states
+improve debugging cli
+optimize c++ code
+label memory regions for debugging
+implement more commands for debugging cli
+fix all TODOs
