@@ -31,7 +31,12 @@ load-state fname - load current emulator state from fname
 
 notes: both addr and v are hex
 
-TODO: add joypad support, fix ppu bugs, implement MBC
+emulator modes (TODO):
+- gui - win32 + sdl2 with logging system
+- cli - cli debugger with sdl windows (view current screen state, vram/oam state, etc.)
+- console - nerfed down console emulator for debugging with peach logs
+
+TODO: add joypad support, fix ppu bugs, implement MBC, remove the need for NDEBUG macro by creating three different modes (gui, cli, console)
 */
 /*
 blargg tests passed:
