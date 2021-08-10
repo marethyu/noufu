@@ -3134,6 +3134,10 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
             m_Emulator->m_Timer->UpdateFreq();
         }
     }
+    else if (address == 0xFF44)
+    {
+        LY = 0;
+    }
     else if (address == 0xFF46)
     {
         MemoryController::DMATransfer(data);
