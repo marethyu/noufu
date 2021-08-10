@@ -25,7 +25,6 @@ run x - run till PC=x (x is hex)
 reload-rom
 
 TODO:
-get-ppm - create a ppm file of current screen
 print rom-info - print basic rom information
 save-state fname - save current emulator state to fname
 load-state fname - load current emulator state from fname
@@ -49,7 +48,6 @@ blargg tests passed:
 
 **halt is taking too long... perhaps it will be solved after PPU implementation is complete...
 */
-// TODO optimize code? proper cli, label memory regions for debugging, proper ppu with pixel FIFO
 
 #include <algorithm>
 #include <array>
@@ -73,9 +71,10 @@ blargg tests passed:
 
 #include "loguru.hpp"
 
-#define ID_LOADROM 0
-#define ID_EXIT 1
-#define ID_ABOUT 2
+#define ID_LOAD_ROM 0
+#define ID_RELOAD_ROM 1
+#define ID_EXIT 2
+#define ID_ABOUT 3
 
 #else
 
@@ -92,7 +91,7 @@ using namespace std::chrono;
 #endif
 
 #ifndef NDEBUG
-const std::string ROM_FILE_PATH = "../IronBoy/ROMS/blargg_tests/cpu_instrs/individual/02-interrupts.gb";
+const std::string ROM_FILE_PATH = "../IronBoy/ROMS/blargg_tests/instr_timing/instr_timing.gb";
 #endif
 
 const std::string EMULATOR_NAME = "脳腐";
@@ -101,6 +100,8 @@ const std::string CONFIG_FILE_PATH = "config";
 
 // Maximum number of cycles per update
 const int MAX_CYCLES = 70224;         // 154 scanlines * 456 cycles per frame = 70224
+
+const int DOTS_PER_SCANLINE = 456;
 
 // Delay between updates
 const float UPDATE_INTERVAL = 16.744; // 1000 ms / 59.72 fps
@@ -125,6 +126,7 @@ const int FLAG_C = 4;
 #define SET_BIT(n, p) do { n |= (1 << (p)); } while (0)
 #define RES_BIT(n, p) do { n &= ~(1 << (p)); } while (0)
 #define SWAP_NIBBLES8(n) do { n = ((n & 0x0F) << 4) | (n >> 4); } while (0)
+#define GET_BIT(n, p) (TEST_BIT(n, p) != 0)
 
 const std::string reg8_str[8] = {
     "C",
@@ -710,6 +712,22 @@ enum
     HALT_MODE2
 };
 
+enum
+{
+    MODE_HBLANK = 0,
+    MODE_VBLANK,
+    MODE_OAM_SEARCH,
+    MODE_PIXEL_TRANSFER
+};
+
+enum
+{
+    SHADE0 = 0,
+    SHADE1,
+    SHADE2,
+    SHADE3
+};
+
 #ifndef NDEBUG
 std::ofstream fout;
 
@@ -755,7 +773,7 @@ class GBComponent;
 class Cpu;
 class InterruptManager;
 class Timer;
-class Gpu;
+class SimpleGpu;
 class MemoryController;
 class EmulatorConfig;
 class Emulator;
@@ -908,23 +926,46 @@ public:
 #endif
 };
 
-class Gpu : GBComponent
+class SimpleGpu : GBComponent
 {
 private:
     Emulator *m_Emulator;
+
+    int m_Counter; // keep track of cycles in a current scanline
+
+    // https://gbdev.io/pandocs/LCDC.html
+    bool bLCDEnabled();
+    bool bWindowEnable();
+    bool bSpriteEnable();
+    bool bBGAndWindowEnable();
+
+    // https://gbdev.io/pandocs/STAT.html
+    bool bCoincidenceStatInterrupt();
+    bool bOAMStatInterrupt();
+    bool bVBlankStatInterrupt();
+    bool bHBlankStatInterrupt();
+    void UpdateMode(int mode);
+
+    void UpdateLCDStatus();
+    void DrawCurrentLine();
+    void RenderBackground();
+    void RenderSprites();
+
+    void RenderPixel(int row, int col, int colour, int attr);
+    int GetColour(int colourNum, uint16_t address);
 public:
-    Gpu(Emulator *emu);
-    ~Gpu();
+    SimpleGpu(Emulator *emu);
+    ~SimpleGpu();
 
     void Init();
     void Reset();
     void Update(int cycles);
+    int GetMode();
 
     std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> m_Pixels;
 
 #ifndef NDEBUG
     void Debug_PrintStatus();
-    void Debug_RenderPPM(const std::string& ppm_fname);
 #endif
 };
 
@@ -946,6 +987,7 @@ private:
     std::array<uint8_t, 0x100> m_BootROM;
 
     void InitBootROM();
+    void DMATransfer(uint8_t data);
 public:
     MemoryController(Emulator *emu);
     ~MemoryController();
@@ -1026,7 +1068,7 @@ public:
     std::unique_ptr<MemoryController> m_MemControl;
     std::unique_ptr<InterruptManager> m_IntManager;
     std::unique_ptr<Timer> m_Timer;
-    std::unique_ptr<Gpu> m_Gpu;
+    std::unique_ptr<SimpleGpu> m_Gpu;
 
     EmulatorConfig *config;
 
@@ -1061,8 +1103,11 @@ public:
     void Initialize();
     void DoEmulation();
     void RenderGame();
+    void HandleInput(SDL_Event& evt);
 };
 #endif
+
+/* TODO prevent accesses to VRAM/OAM during certain PPU modes... maybe when accessing VRAM/OAM, do it thru PPU (PPU is responsible for VRAM/OAM accesses) */
 
 uint8_t Cpu::ReadByte(uint16_t address) const
 {
@@ -2464,27 +2509,330 @@ void Timer::Debug_PrintStatus()
 }
 #endif
 
-Gpu::Gpu(Emulator *emu)
+bool SimpleGpu::bLCDEnabled()
+{
+    return TEST_BIT(m_Emulator->m_MemControl->LCDC, 7);
+}
+
+bool SimpleGpu::bWindowEnable()
+{
+    return TEST_BIT(m_Emulator->m_MemControl->LCDC, 5);
+}
+
+bool SimpleGpu::bSpriteEnable()
+{
+    return TEST_BIT(m_Emulator->m_MemControl->LCDC, 1);
+}
+
+bool SimpleGpu::bBGAndWindowEnable()
+{
+    return TEST_BIT(m_Emulator->m_MemControl->LCDC, 0);
+}
+
+bool SimpleGpu::bCoincidenceStatInterrupt()
+{
+    return TEST_BIT(m_Emulator->m_MemControl->STAT, 6);
+}
+
+bool SimpleGpu::bOAMStatInterrupt()
+{
+    return TEST_BIT(m_Emulator->m_MemControl->STAT, 5);
+}
+
+bool SimpleGpu::bVBlankStatInterrupt()
+{
+    return TEST_BIT(m_Emulator->m_MemControl->STAT, 4);
+}
+
+bool SimpleGpu::bHBlankStatInterrupt()
+{
+    return TEST_BIT(m_Emulator->m_MemControl->STAT, 3);
+}
+
+void SimpleGpu::UpdateMode(int mode)
+{
+    m_Emulator->m_MemControl->STAT &= 0b11111100;
+    m_Emulator->m_MemControl->STAT |= mode;
+}
+
+void SimpleGpu::UpdateLCDStatus()
+{
+    if (!SimpleGpu::bLCDEnabled())
+    {
+        m_Counter = DOTS_PER_SCANLINE;
+        m_Emulator->m_MemControl->LY = 0;
+        SimpleGpu::UpdateMode(MODE_VBLANK);
+        return;
+    }
+
+    bool stat_int = false;
+    int old_mode = SimpleGpu::GetMode();
+    int new_mode;
+
+    if (m_Emulator->m_MemControl->LY >= 144)
+    {
+        new_mode = MODE_VBLANK;
+        stat_int = SimpleGpu::bVBlankStatInterrupt();
+    }
+    else
+    {
+        int dots = DOTS_PER_SCANLINE - m_Counter;
+
+        if (dots <= 80) // mode 2
+        {
+            new_mode = MODE_OAM_SEARCH;
+            stat_int = SimpleGpu::bOAMStatInterrupt();
+        }
+        else if (dots > 80 && dots <= 360) // mode 3
+        {
+            new_mode = MODE_PIXEL_TRANSFER;
+        }
+        else // mode 0
+        {
+            new_mode = MODE_HBLANK;
+            stat_int = SimpleGpu::bHBlankStatInterrupt();
+        }
+    }
+
+    SimpleGpu::UpdateMode(new_mode);
+
+    if (stat_int && (old_mode != new_mode))
+    {
+        m_Emulator->m_IntManager->RequestInterrupt(INT_LCD_STAT);
+    }
+
+    if (m_Emulator->m_MemControl->LY == m_Emulator->m_MemControl->LYC)
+    {
+        SET_BIT(m_Emulator->m_MemControl->STAT, 2);
+
+        if (SimpleGpu::bCoincidenceStatInterrupt())
+        {
+            m_Emulator->m_IntManager->RequestInterrupt(INT_LCD_STAT);
+        }
+    }
+    else
+    {
+        RES_BIT(m_Emulator->m_MemControl->STAT, 2);
+    }
+}
+
+void SimpleGpu::DrawCurrentLine()
+{
+    if (SimpleGpu::bBGAndWindowEnable())
+    {
+        SimpleGpu::RenderBackground();
+    }
+
+    if (SimpleGpu::bSpriteEnable())
+    {
+        SimpleGpu::RenderSprites();
+    }
+}
+
+void SimpleGpu::RenderBackground()
+{
+    uint16_t wndTileMem = TEST_BIT(m_Emulator->m_MemControl->LCDC, 4) ? 0x8000 : 0x8800;
+
+    bool _signed = wndTileMem == 0x8800;
+    bool usingWnd = TEST_BIT(m_Emulator->m_MemControl->LCDC, 5) && m_Emulator->m_MemControl->WY <= m_Emulator->m_MemControl->LY; // true if window display is enabled (specified in LCDC) and WndY <= LY
+
+    uint16_t bkgdTileMem = TEST_BIT(m_Emulator->m_MemControl->LCDC, usingWnd ? 6 : 3) ? 0x9C00 : 0x9800;
+
+    // the y-position is used to determine which of 32 (256 / 8) vertical tiles will used (background map y)
+    uint8_t yPos = !usingWnd ? m_Emulator->m_MemControl->SCY + m_Emulator->m_MemControl->LY : m_Emulator->m_MemControl->LY - m_Emulator->m_MemControl->WY; // map to window coordinates if necessary
+    uint16_t tileRow = ((uint8_t) (yPos / 8)) * 32; // which of 8 vertical pixels of the current tile is the scanline on?
+
+    // time to draw a scanline which consists of 160 pixels
+    for (int pixel = 0; pixel < 160; ++pixel)
+    {
+        uint8_t xPos = usingWnd && pixel >= m_Emulator->m_MemControl->WX ? pixel - m_Emulator->m_MemControl->WX : m_Emulator->m_MemControl->SCX + pixel;
+        uint16_t tileCol = xPos / 8; // which of horizontal pixels of the current tile does xPos fall in?
+        uint16_t tileAddr = bkgdTileMem + tileRow + tileCol;
+        int16_t tileNum = _signed ? (int8_t) m_Emulator->m_MemControl->ReadByte(tileAddr) : (uint8_t) m_Emulator->m_MemControl->ReadByte(tileAddr);
+        uint16_t tileLocation = wndTileMem + (_signed ? (tileNum + 128) * 16 : tileNum * 16);
+
+        // determine the correct row of pixels
+        uint8_t line = yPos % 8;
+        line *= 2; // each line needs 2 bytes of memory so...
+
+        uint8_t data1 = m_Emulator->m_MemControl->ReadByte(tileLocation + line);
+        uint8_t data2 = m_Emulator->m_MemControl->ReadByte(tileLocation + line + 1);
+
+        int bit = 7 - (xPos % 8); // bit position in data1 and data2 (because pixel 0 corresponds to bit 7 and pixel 1 corresponds to bit 6 and so on)
+        int colourNum = (GET_BIT(data2, bit) << 1) | GET_BIT(data1, bit);
+
+        SimpleGpu::RenderPixel(m_Emulator->m_MemControl->LY, pixel, SimpleGpu::GetColour(colourNum, 0xFF47), -1);
+    }
+}
+
+void SimpleGpu::RenderSprites()
+{
+    bool use8x16 = TEST_BIT(m_Emulator->m_MemControl->LCDC, 2); // determine the sprite size
+
+    // the sprite layer can display up to 40 sprites
+    for (int i = 0; i < 40; ++i)
+    {
+        int index = i * 4; // each sprite takes 4 bytes of OAM space (0xFE00-0xFE9F)
+
+        uint8_t spriteY = m_Emulator->m_MemControl->ReadByte(0xFE00 + index) - 16;
+        uint8_t spriteX = m_Emulator->m_MemControl->ReadByte(0xFE00 + index + 1) - 8;
+        uint8_t patternNumber = m_Emulator->m_MemControl->ReadByte(0xFE00 + index + 2);
+        uint8_t attributes = m_Emulator->m_MemControl->ReadByte(0xFE00 + index + 3);
+
+        bool xFlip = TEST_BIT(attributes, 5);
+        bool yFlip = TEST_BIT(attributes, 6);
+
+        int height = use8x16 ? 16 : 8;
+
+        // does the scanline intercept this sprite?
+        if ((m_Emulator->m_MemControl->LY >= spriteY) && (m_Emulator->m_MemControl->LY < (spriteY + height)))
+        {
+            int line = m_Emulator->m_MemControl->LY - spriteY;
+
+            if (yFlip)
+            {
+                line = height - line; // read backwards if y flipping is allowed
+            }
+
+            line *= 2; // each line takes 2 bytes of memory
+
+            uint16_t tileLocation = 0x8000 + (patternNumber * 16);
+
+            uint8_t data1 = m_Emulator->m_MemControl->ReadByte(tileLocation + line);
+            uint8_t data2 = m_Emulator->m_MemControl->ReadByte(tileLocation + line + 1);
+
+            for (int tilePixel = 7; tilePixel >= 0; tilePixel--)
+            {
+                int bit = tilePixel;
+
+                if (xFlip)
+                {
+                    bit = 7 - bit; // read backwards if x flipping is allowed
+                }
+
+                int colourNum = (GET_BIT(data2, bit) << 1) | GET_BIT(data1, bit);
+                int col = SimpleGpu::GetColour(colourNum, TEST_BIT(attributes, 4) ? 0xFF49 : 0xFF48);
+
+                // it's transparent for sprites
+                if (col == SHADE0)
+                {
+                    continue;
+                }
+
+                int pixel = spriteX + (7 - tilePixel);
+
+                if ((m_Emulator->m_MemControl->LY < 0) || (m_Emulator->m_MemControl->LY > 143) || (pixel < 0) || (pixel > 159))
+                {
+                    continue;
+                }
+
+                SimpleGpu::RenderPixel(m_Emulator->m_MemControl->LY, pixel, col, attributes);
+            }
+        }
+    }
+}
+
+void SimpleGpu::RenderPixel(int row, int col, int colour, int attr)
+{
+    uint8_t red, green, blue;
+    int offset = row * SCREEN_WIDTH * 4 + col * 4;
+
+    // check if pixel is hidden behind background
+    if (attr != -1)
+    {
+        // if the bit 7 of attributes is set then the screen pixel colour must be SHADE0 before changing colour
+        if (TEST_BIT(attr, 7) && ((m_Pixels[offset + 2] != 224) || (m_Pixels[offset + 1] != 248) || (m_Pixels[offset] != 208)))
+        {
+            return;
+        }
+    }
+
+    // TODO custom colour shades
+    switch (colour)
+    {
+    case SHADE0:
+    {
+        red = 224;
+        green = 248;
+        blue = 208;
+        break;
+    }
+    case SHADE1:
+    {
+        red = 136;
+        green = 192;
+        blue = 112;
+        break;
+    }
+    case SHADE2:
+    {
+        red = 52;
+        green = 104;
+        blue = 86;
+        break;
+    }
+    case SHADE3:
+    {
+        red = 8;
+        green = 24;
+        blue = 32;
+        break;
+    }
+    }
+
+    m_Pixels[offset]     = blue;
+    m_Pixels[offset + 1] = green;
+    m_Pixels[offset + 2] = red;
+    m_Pixels[offset + 3] = 255;
+}
+
+int SimpleGpu::GetColour(int colourNum, uint16_t address)
+{
+    uint8_t palette = m_Emulator->m_MemControl->ReadByte(address);
+    int hi, lo;
+
+    switch (colourNum)
+    {
+    case 0:
+        hi = 1;
+        lo = 0;
+        break;
+    case 1:
+        hi = 3;
+        lo = 2;
+        break;
+    case 2:
+        hi = 5;
+        lo = 4;
+        break;
+    case 3:
+        hi = 7;
+        lo = 6;
+        break;
+    }
+
+    return (GET_BIT(palette, hi) << 1) | GET_BIT(palette, lo);
+}
+
+SimpleGpu::SimpleGpu(Emulator *emu)
 {
     m_Emulator = emu;
 }
 
-Gpu::~Gpu()
+SimpleGpu::~SimpleGpu()
 {
     delete m_Emulator;
 }
 
-void Gpu::Init()
+void SimpleGpu::Init()
 {
 #ifndef NDEBUG
     m_Emulator->m_MemControl->LY = 0x90;
-#else
-    m_Emulator->m_MemControl->LY = 0x90; // TODO change to 0x00 after gpu implementation is complete
 #endif
     std::fill(m_Pixels.begin(), m_Pixels.end(), 0);
 }
 
-void Gpu::Reset()
+void SimpleGpu::Reset()
 {
     m_Emulator->m_MemControl->LCDC = 0x91;
     m_Emulator->m_MemControl->STAT = 0x85;
@@ -2493,7 +2841,7 @@ void Gpu::Reset()
 #ifndef NDEBUG
     m_Emulator->m_MemControl->LY = 0x90;
 #else
-    m_Emulator->m_MemControl->LY = 0x90;
+    m_Emulator->m_MemControl->LY = 0x00;
 #endif
     m_Emulator->m_MemControl->LYC = 0x00;
     m_Emulator->m_MemControl->BGP = 0xFC;
@@ -2503,22 +2851,46 @@ void Gpu::Reset()
     m_Emulator->m_MemControl->WX = 0x00;
 }
 
-void Gpu::Update(int cycles)
+void SimpleGpu::Update(int cycles)
 {
-    // TODO
+#ifdef NDEBUG
+    SimpleGpu::UpdateLCDStatus();
+
+    if (!SimpleGpu::bLCDEnabled()) return;
+
+    m_Counter -= cycles;
+
+    if (m_Counter <= 0)
+    {
+        m_Counter = DOTS_PER_SCANLINE;
+        m_Emulator->m_MemControl->LY++;
+
+        if (m_Emulator->m_MemControl->LY == 144)
+        {
+            m_Emulator->m_IntManager->RequestInterrupt(INT_VBLANK);
+        }
+        else if (m_Emulator->m_MemControl->LY == 154)
+        {
+            m_Emulator->m_MemControl->LY = 0;
+        }
+        else if (m_Emulator->m_MemControl->LY < 144)
+        {
+            SimpleGpu::DrawCurrentLine();
+        }
+    }
+#endif
+}
+
+int SimpleGpu::GetMode()
+{
+    return m_Emulator->m_MemControl->STAT & 0b00000011;
 }
 
 #ifndef NDEBUG
-void Gpu::Debug_PrintStatus()
+void SimpleGpu::Debug_PrintStatus()
 {
     std::cout << "*GPU STATUS*" << std::endl;
-    
     std::cout << std::endl;
-}
-
-void Gpu::Debug_RenderPPM(const std::string& ppm_fname)
-{
-    // TODO
 }
 #endif
 
@@ -2534,6 +2906,16 @@ void MemoryController::InitBootROM()
     istream.read(reinterpret_cast<char *>(m_BootROM.data()), 0x100);
 
     istream.close();
+}
+
+void MemoryController::DMATransfer(uint8_t data)
+{
+    uint16_t address = data << 8;
+
+    for (int i = 0; i < 0xA0; ++i)
+    {
+        MemoryController::WriteByte(0xFE00 + i, MemoryController::ReadByte(address + i));
+    }
 }
 
 MemoryController::MemoryController(Emulator *emu)
@@ -2749,6 +3131,10 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
             m_Emulator->m_Timer->UpdateFreq();
         }
     }
+    else if (address == 0xFF46)
+    {
+        MemoryController::DMATransfer(data);
+    }
     else if (inBootMode && address == 0xFF50)
     {
         m_IO[0x50] = data;
@@ -2849,7 +3235,7 @@ Emulator::Emulator()
     m_MemControl = std::unique_ptr<MemoryController>(new MemoryController(this));
     m_IntManager = std::unique_ptr<InterruptManager>(new InterruptManager(this));
     m_Timer = std::unique_ptr<Timer>(new Timer(this));
-    m_Gpu = std::unique_ptr<Gpu>(new Gpu(this));
+    m_Gpu = std::unique_ptr<SimpleGpu>(new SimpleGpu(this));
 }
 
 Emulator::~Emulator()
@@ -2885,6 +3271,7 @@ void Emulator::Update()
 
     m_PrevTotalCycles = m_TotalCycles;
 #ifdef NDEBUG
+    /*
     // TEST
     int w = SCREEN_WIDTH;
     int h = SCREEN_HEIGHT;
@@ -2905,6 +3292,7 @@ void Emulator::Update()
             m_Gpu->m_Pixels[offset + 3] = 255;
         }
     }
+    */
 
     Render();
 #endif
@@ -3035,7 +3423,8 @@ bool GameBoyWin32::CreateSDLWindow()
     AppendMenu(hMenuBar, MF_POPUP, (UINT_PTR) hFile, "File");
     AppendMenu(hMenuBar, MF_POPUP, (UINT_PTR) hHelp, "Help");
 
-    AppendMenu(hFile, MF_STRING, ID_LOADROM, "Load ROM");
+    AppendMenu(hFile, MF_STRING, ID_LOAD_ROM, "Load ROM");
+    AppendMenu(hFile, MF_STRING, ID_RELOAD_ROM, "Reload ROM");
     AppendMenu(hFile, MF_STRING, ID_EXIT, "Exit");
 
     AppendMenu(hHelp, MF_STRING, ID_ABOUT, "About");
@@ -3096,7 +3485,7 @@ void GameBoyWin32::DoEmulation()
 
     SDL_Event evt;
 
-    unsigned int time2;
+    uint32_t time2;
 
     while (true)
     {
@@ -3110,7 +3499,7 @@ void GameBoyWin32::DoEmulation()
                 case WM_COMMAND:
                     switch (LOWORD(evt.syswm.msg->msg.win.wParam))
                     {
-                    case ID_LOADROM:
+                    case ID_LOAD_ROM:
                     {
                         OPENFILENAME ofn;
                         char szFileName[MAX_PATH] = "";
@@ -3126,10 +3515,19 @@ void GameBoyWin32::DoEmulation()
 
                         if(GetOpenFileName(&ofn))
                         {
+                            m_Emulator->InitComponents();
                             m_Emulator->m_MemControl->LoadROM(szFileName);
                             bROMLoaded = true;
                             bFirstTime = true;
+                            LOG_F(INFO, "Loaded %s", szFileName);
                         }
+                        break;
+                    }
+                    case ID_RELOAD_ROM:
+                    {
+                        m_Emulator->InitComponents();
+                        m_Emulator->m_MemControl->ReloadROM();
+                        LOG_F(INFO, "Current ROM reloaded");
                         break;
                     }
                     case ID_EXIT:
@@ -3150,10 +3548,8 @@ void GameBoyWin32::DoEmulation()
             case SDL_QUIT:
                 quit = true;
                 break;
-            /*
             default:
                 GameBoyWin32::HandleInput(evt);
-            */
                 break;
             }
         }
@@ -3171,7 +3567,7 @@ void GameBoyWin32::DoEmulation()
                 bFirstTime = false;
             }
 
-            unsigned int current = SDL_GetTicks();
+            uint32_t current = SDL_GetTicks();
 
             if ((time2 + UPDATE_INTERVAL) < current)
             {
@@ -3193,6 +3589,24 @@ void GameBoyWin32::RenderGame()
     SDL_UpdateTexture(m_Texture, nullptr, m_Emulator->m_Gpu->m_Pixels.data(), SCREEN_WIDTH * 4);
     SDL_RenderCopy(m_Renderer, m_Texture, nullptr, nullptr);
     SDL_RenderPresent(m_Renderer);
+}
+
+void GameBoyWin32::HandleInput(SDL_Event& evt)
+{
+    if (evt.type == SDL_KEYDOWN)
+    {
+        switch (evt.key.keysym.sym)
+        {
+            // TODO
+        }
+    }
+    else if (evt.type == SDL_KEYUP)
+    {
+        switch (evt.key.keysym.sym)
+        {
+            // TODO
+        }
+    }
 }
 #endif
 
