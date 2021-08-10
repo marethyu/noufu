@@ -30,6 +30,8 @@ save-state fname - save current emulator state to fname
 load-state fname - load current emulator state from fname
 
 notes: both addr and v are hex
+
+TODO: add joypad support, fix ppu bugs, implement MBC
 */
 /*
 blargg tests passed:
@@ -774,6 +776,7 @@ class Cpu;
 class InterruptManager;
 class Timer;
 class SimpleGpu;
+class Gpu; // TODO
 class MemoryController;
 class EmulatorConfig;
 class Emulator;
