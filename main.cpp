@@ -778,10 +778,6 @@ std::string int_to_bin8(T i, bool prefixed=true)
 }
 #endif
 
-#ifdef NDEBUG
-typedef void (*RenderGraphics)();
-#endif
-
 struct rgb_tuple
 {
     uint8_t r;
@@ -812,8 +808,6 @@ class EmulatorConfig;
 class Emulator;
 class GameBoyCLI; // TODO
 #ifdef NDEBUG
-class Renderer; /* abstract */ // TODO
-class SDLRenderer; // TODO
 class GameBoyWindows; // TODO refactor
 #endif
 
@@ -1116,10 +1110,6 @@ public:
     void Update();
     void Tick(); // + 1 M-cycle
 
-#ifdef NDEBUG
-    void SetRender(RenderGraphics render);
-#endif
-
 #ifndef NDEBUG
     void Debug_Step(std::vector<char>& blargg_serial, int times);
     void Debug_StepTill(std::vector<char>& blargg_serial, uint16_t x);
@@ -1138,10 +1128,6 @@ public:
 
     int m_TotalCycles; // T-cycles
     int m_PrevTotalCycles;
-
-#ifdef NDEBUG
-    RenderGraphics Render;
-#endif
 };
 
 #ifdef NDEBUG
@@ -3398,22 +3384,12 @@ void Emulator::Update()
     }
 
     m_PrevTotalCycles = m_TotalCycles;
-#ifdef NDEBUG
-    Render();
-#endif
 }
 
 void Emulator::Tick()
 {
     m_TotalCycles += 4;
 }
-
-#ifdef NDEBUG
-void Emulator::SetRender(RenderGraphics render)
-{
-    Render = render;
-}
-#endif
 
 #ifndef NDEBUG
 void Emulator::Debug_Step(std::vector<char>& blargg_serial, int times)
@@ -3458,16 +3434,10 @@ void Emulator::Debug_PrintEmulatorStatus()
 #endif
 
 #ifdef NDEBUG
-static void DoRender()
-{
-    GameBoyWindows *gb = GameBoyWindows::GetSingleton();
-    gb->RenderGame();
-}
 
 GameBoyWindows::GameBoyWindows()
 {
     m_Emulator = new Emulator();
-    m_Emulator->SetRender(DoRender);
 
     if (!GameBoyWindows::CreateSDLWindow())
     {
@@ -3678,7 +3648,8 @@ void GameBoyWindows::DoEmulation()
             if ((time2 + UPDATE_INTERVAL) < current)
             {
                 m_Emulator->Update();
-                time2 = current ;
+                GameBoyWindows::RenderGame();
+                time2 = current;
             }
         }
         else
