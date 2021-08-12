@@ -12,7 +12,7 @@ Stage 5: Implement a seperate class for cartridge with basic MBC support and mak
 debug cmds:
 step ([x]) - step cpu for x times (x=1 is default)
 quit - quit debugger
-print status [all cpu intman timer gpu]
+print status [all cpu intman timer gpu joypad]
 print mem [addr] - print value in mem bus at addr
 print mem range [start] [end] - print memory values from start to end
 print ins - print current instruction
@@ -36,7 +36,7 @@ emulator modes (TODO):
 - cli - cli debugger with sdl windows (view current screen state, vram/oam state, etc.)
 - console - nerfed down console emulator for debugging with peach logs
 
-TODO: add joypad support, fix ppu bugs, implement MBC, remove the need for NDEBUG macro by creating three different modes (gui, cli, console)
+TODO: implement MBC (make cartridge class)
 */
 /*
 blargg tests passed:
@@ -72,6 +72,8 @@ blargg tests passed:
 #ifdef NDEBUG
 
 #include <Windows.h>
+
+#define SDL_MAIN_HANDLED
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
@@ -735,6 +737,18 @@ enum
     SHADE3
 };
 
+enum
+{
+    JOYPAD_RIGHT = 0,
+    JOYPAD_LEFT,
+    JOYPAD_UP,
+    JOYPAD_DOWN,
+    JOYPAD_A,
+    JOYPAD_B,
+    JOYPAD_SELECT,
+    JOYPAD_START
+};
+
 #ifndef NDEBUG
 std::ofstream fout;
 
@@ -781,12 +795,19 @@ class Cpu;
 class InterruptManager;
 class Timer;
 class SimpleGpu;
-class Gpu; // TODO
+class Gpu; /* GPU with pixel FIFO */ // TODO
+class Cartridge; // TODO
+class MBCBase; /* abstract */ // TODO
+class MBC1; // TODO
 class MemoryController;
+class JoyPad;
 class EmulatorConfig;
 class Emulator;
+class GameBoyCLI; // TODO
 #ifdef NDEBUG
-class GameBoyWin32;
+class Renderer; /* abstract */ // TODO
+class SDLRenderer; // TODO
+class GameBoyWindows; // TODO refactor
 #endif
 
 class GBComponent
@@ -909,7 +930,6 @@ public:
 #endif
 };
 
-// TODO fix it so it can run instr_timing.gb
 class Timer : GBComponent
 {
 private:
@@ -1035,6 +1055,34 @@ public:
     uint8_t &OBP1 = m_IO[0x49];
     uint8_t &WY = m_IO[0x4A];
     uint8_t &WX = m_IO[0x4B];
+
+    uint8_t &P1 = m_IO[0x00]; // joypad
+};
+
+// good explanation here https://github.com/gbdev/pandocs/blob/be820673f71c8ca514bab4d390a3004c8273f988/historical/1995-Jan-28-GAMEBOY.txt#L165
+class JoyPad : GBComponent
+{
+private:
+    Emulator *m_Emulator;
+
+    // upper 4 bits - standard buttons
+    // lower 4 bits - directional buttons
+    // see JOYPAD_ enum for more info
+    uint8_t joypad_state;
+public:
+    JoyPad(Emulator *emu);
+    ~JoyPad();
+
+    void Init();
+    void Reset();
+
+    void PressButton(int button);
+    void ReleaseButton(int button);
+    uint8_t ReadP1();
+
+#ifndef NDEBUG
+    void Debug_PrintStatus();
+#endif
 };
 
 class EmulatorConfig
@@ -1077,6 +1125,7 @@ public:
     std::unique_ptr<InterruptManager> m_IntManager;
     std::unique_ptr<Timer> m_Timer;
     std::unique_ptr<SimpleGpu> m_Gpu;
+    std::unique_ptr<JoyPad> m_JoyPad;
 
     EmulatorConfig *config;
 
@@ -1089,7 +1138,7 @@ public:
 };
 
 #ifdef NDEBUG
-class GameBoyWin32
+class GameBoyWindows
 {
 private:
     Emulator *m_Emulator;
@@ -1098,15 +1147,15 @@ private:
     SDL_Texture *m_Texture;
     HWND hWnd;
 
-    GameBoyWin32();
+    GameBoyWindows();
     bool CreateSDLWindow();
 
-    static GameBoyWin32 *m_Instance;
+    static GameBoyWindows *m_Instance;
 public:
-    static GameBoyWin32 *CreateInstance();
-    static GameBoyWin32 *GetSingleton();
+    static GameBoyWindows *CreateInstance();
+    static GameBoyWindows *GetSingleton();
 
-    ~GameBoyWin32();
+    ~GameBoyWindows();
 
     void Initialize();
     void DoEmulation();
@@ -2898,6 +2947,7 @@ int SimpleGpu::GetMode()
 void SimpleGpu::Debug_PrintStatus()
 {
     std::cout << "*GPU STATUS*" << std::endl;
+    // TODO
     std::cout << std::endl;
 }
 #endif
@@ -3037,6 +3087,10 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
         LOG_IF_F(WARNING, true, "Attempted to read from $FEA0-$FEFF; address=%04X", address);
 #endif
         return 0x00;
+    }
+    else if (address == 0xFF00)
+    {
+        return m_Emulator->m_JoyPad->ReadP1();
     }
     else if (address == 0xFF04)
     {
@@ -3207,6 +3261,77 @@ void MemoryController::Debug_PrintMemoryRange(uint16_t start, uint16_t end)
 }
 #endif
 
+JoyPad::JoyPad(Emulator *emu)
+{
+    m_Emulator = emu;
+}
+
+JoyPad::~JoyPad()
+{
+    delete m_Emulator;
+}
+
+void JoyPad::Init()
+{
+    joypad_state = 0xFF; // 0b11111111
+    m_Emulator->m_MemControl->P1 = 0xC0; // 0b11000000
+}
+
+void JoyPad::Reset()
+{
+    joypad_state = 0xFF;
+    m_Emulator->m_MemControl->P1 = 0xCF;
+}
+
+void JoyPad::PressButton(int button)
+{
+    bool pressed = !TEST_BIT(joypad_state, button);
+
+    RES_BIT(joypad_state, button);
+
+    if (((button > 3 && !TEST_BIT(m_Emulator->m_MemControl->P1, 5)) ||
+         (button <= 3 && !TEST_BIT(m_Emulator->m_MemControl->P1, 4))) &&
+        !pressed)
+    {
+        m_Emulator->m_IntManager->RequestInterrupt(INT_JOYPAD);
+    }
+}
+
+void JoyPad::ReleaseButton(int button)
+{
+    SET_BIT(joypad_state, button);
+}
+
+uint8_t JoyPad::ReadP1()
+{
+    int jp_reg = m_Emulator->m_MemControl->P1;
+
+    jp_reg |= 0xCF; // 0b11001111
+
+    if (!TEST_BIT(jp_reg, 5)) // standard buttons
+    {
+        uint8_t hi = joypad_state >> 4; // the states of standard buttons are stored at upper 4 bits, remember?
+        jp_reg &= 0xF0 | hi; // 0xF0 is necessary for bitwise & operation
+    }
+
+    if (!TEST_BIT(jp_reg, 4)) // directional buttons
+    {
+        uint8_t lo = joypad_state & 0x0F;
+        jp_reg &= 0xF0 | lo;
+    }
+
+    return jp_reg;
+}
+
+#ifndef NDEBUG
+void JoyPad::Debug_PrintStatus()
+{
+    std::cout << "*JoyPad STATUS*" << std::endl;
+    // TODO
+    std::cout << std::endl;
+}
+#endif
+
 void EmulatorConfig::Init()
 {
     std::ifstream istream(CONFIG_FILE_PATH, std::ios::in);
@@ -3248,6 +3373,7 @@ Emulator::Emulator()
     m_IntManager = std::unique_ptr<InterruptManager>(new InterruptManager(this));
     m_Timer = std::unique_ptr<Timer>(new Timer(this));
     m_Gpu = std::unique_ptr<SimpleGpu>(new SimpleGpu(this));
+    m_JoyPad = std::unique_ptr<JoyPad>(new JoyPad(this));
 }
 
 Emulator::~Emulator()
@@ -3259,6 +3385,7 @@ void Emulator::InitComponents()
     m_IntManager->Init();
     m_Timer->Init();
     m_Gpu->Init();
+    m_JoyPad->Init();
     m_TotalCycles = m_PrevTotalCycles = 0;
 }
 
@@ -3268,6 +3395,7 @@ void Emulator::ResetComponents()
     m_IntManager->Reset();
     m_Timer->Reset();
     m_Gpu->Reset();
+    m_JoyPad->Reset();
     m_TotalCycles = m_PrevTotalCycles = 0;
 }
 
@@ -3283,29 +3411,6 @@ void Emulator::Update()
 
     m_PrevTotalCycles = m_TotalCycles;
 #ifdef NDEBUG
-    /*
-    // TEST
-    int w = SCREEN_WIDTH;
-    int h = SCREEN_HEIGHT;
-
-    for (int i = 0; i < h; i++)
-    {
-        for (int j = 0; j < w; j++)
-        {
-            int offset = i * w * 4 + j * 4;
-
-            int r = std::rand() % 256;
-            int g = std::rand() % 256;
-            int b = std::rand() % 256;
-
-            m_Gpu->m_Pixels[offset] = b;
-            m_Gpu->m_Pixels[offset + 1] = g;
-            m_Gpu->m_Pixels[offset + 2] = r;
-            m_Gpu->m_Pixels[offset + 3] = 255;
-        }
-    }
-    */
-
     Render();
 #endif
 }
@@ -3360,29 +3465,30 @@ void Emulator::Debug_PrintEmulatorStatus()
     m_IntManager->Debug_PrintStatus();
     m_Timer->Debug_PrintStatus();
     m_Gpu->Debug_PrintStatus();
+    m_JoyPad->Debug_PrintStatus();
 }
 #endif
 
 #ifdef NDEBUG
 static void DoRender()
 {
-    GameBoyWin32 *gb = GameBoyWin32::GetSingleton();
+    GameBoyWindows *gb = GameBoyWindows::GetSingleton();
     gb->RenderGame();
 }
 
-GameBoyWin32::GameBoyWin32()
+GameBoyWindows::GameBoyWindows()
 {
     m_Emulator = new Emulator();
     m_Emulator->SetRender(DoRender);
 
-    if (!GameBoyWin32::CreateSDLWindow())
+    if (!GameBoyWindows::CreateSDLWindow())
     {
         MessageBox(nullptr, TEXT("SDL window cannot be created."), TEXT("Error"), MB_OK | MB_ICONERROR);
         std::exit(1);
     }
 }
 
-bool GameBoyWin32::CreateSDLWindow()
+bool GameBoyWindows::CreateSDLWindow()
 {
     if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
@@ -3451,24 +3557,24 @@ bool GameBoyWin32::CreateSDLWindow()
     return true;
 }
 
-GameBoyWin32 *GameBoyWin32::m_Instance = 0;
+GameBoyWindows *GameBoyWindows::m_Instance = 0;
 
-GameBoyWin32 *GameBoyWin32::CreateInstance()
+GameBoyWindows *GameBoyWindows::CreateInstance()
 {
     if (m_Instance == 0)
     {
-        m_Instance = new GameBoyWin32();
+        m_Instance = new GameBoyWindows();
     }
 
     return m_Instance;
 }
 
-GameBoyWin32 *GameBoyWin32::GetSingleton()
+GameBoyWindows *GameBoyWindows::GetSingleton()
 {
     return m_Instance;
 }
 
-GameBoyWin32::~GameBoyWin32()
+GameBoyWindows::~GameBoyWindows()
 {
     delete m_Emulator;
 
@@ -3484,12 +3590,12 @@ GameBoyWin32::~GameBoyWin32()
     SDL_Quit();
 }
 
-void GameBoyWin32::Initialize()
+void GameBoyWindows::Initialize()
 {
     m_Emulator->InitComponents();
 }
 
-void GameBoyWin32::DoEmulation()
+void GameBoyWindows::DoEmulation()
 {
     bool bFirstTime = true;
     bool bROMLoaded = false;
@@ -3561,7 +3667,7 @@ void GameBoyWin32::DoEmulation()
                 quit = true;
                 break;
             default:
-                GameBoyWin32::HandleInput(evt);
+                GameBoyWindows::HandleInput(evt);
                 break;
             }
         }
@@ -3589,12 +3695,12 @@ void GameBoyWin32::DoEmulation()
         }
         else
         {
-            GameBoyWin32::RenderGame();
+            GameBoyWindows::RenderGame();
         }
     }
 }
 
-void GameBoyWin32::RenderGame()
+void GameBoyWindows::RenderGame()
 {
     SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 255);
     SDL_RenderClear(m_Renderer);
@@ -3603,34 +3709,80 @@ void GameBoyWin32::RenderGame()
     SDL_RenderPresent(m_Renderer);
 }
 
-void GameBoyWin32::HandleInput(SDL_Event& evt)
+void GameBoyWindows::HandleInput(SDL_Event& evt)
 {
     if (evt.type == SDL_KEYDOWN)
     {
         switch (evt.key.keysym.sym)
         {
-            // TODO
+        case SDLK_a:
+            m_Emulator->m_JoyPad->PressButton(JOYPAD_A);
+            break;
+        case SDLK_b:
+            m_Emulator->m_JoyPad->PressButton(JOYPAD_B);
+            break;
+        case SDLK_RETURN:
+            m_Emulator->m_JoyPad->PressButton(JOYPAD_START);
+            break;
+        case SDLK_SPACE:
+            m_Emulator->m_JoyPad->PressButton(JOYPAD_SELECT);
+            break;
+        case SDLK_RIGHT:
+            m_Emulator->m_JoyPad->PressButton(JOYPAD_RIGHT);
+            break;
+        case SDLK_LEFT:
+            m_Emulator->m_JoyPad->PressButton(JOYPAD_LEFT);
+            break;
+        case SDLK_UP:
+            m_Emulator->m_JoyPad->PressButton(JOYPAD_UP);
+            break;
+        case SDLK_DOWN:
+            m_Emulator->m_JoyPad->PressButton(JOYPAD_DOWN);
+            break;
         }
     }
     else if (evt.type == SDL_KEYUP)
     {
         switch (evt.key.keysym.sym)
         {
-            // TODO
+        case SDLK_a:
+            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_A);
+            break;
+        case SDLK_b:
+            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_B);
+            break;
+        case SDLK_RETURN:
+            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_START);
+            break;
+        case SDLK_SPACE:
+            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_SELECT);
+            break;
+        case SDLK_RIGHT:
+            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_RIGHT);
+            break;
+        case SDLK_LEFT:
+            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_LEFT);
+            break;
+        case SDLK_UP:
+            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_UP);
+            break;
+        case SDLK_DOWN:
+            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_DOWN);
+            break;
         }
     }
 }
 #endif
 
 #ifdef NDEBUG
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+int main(int argc, char *argv[])
 {
     std::srand(unsigned(std::time(nullptr)));
 
     loguru::init(__argc, __argv);
     loguru::add_file("emulation_log.txt", loguru::Append, loguru::Verbosity_MAX);
 
-    GameBoyWin32 *gb = GameBoyWin32::CreateInstance();
+    GameBoyWindows *gb = GameBoyWindows::CreateInstance();
     gb->Initialize();
     gb->DoEmulation();
 
@@ -3705,6 +3857,10 @@ int main(int argc, char *argv[])
                 else if (str == "gpu")
                 {
                     emu->m_Gpu->Debug_PrintStatus();
+                }
+                else if (str == "joypad")
+                {
+                    emu->m_JoyPad->Debug_PrintStatus();
                 }
             }
             else if (str == "mem")
