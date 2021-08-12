@@ -2491,8 +2491,8 @@ void Timer::Init()
     DIV = 0x00;
     m_Emulator->m_MemControl->TIMA = 0x00;
     m_Emulator->m_MemControl->TMA = 0x00;
-    m_Emulator->m_MemControl->TAC = 0x00;
-    Timer::UpdateFreq();
+    m_Emulator->m_MemControl->TAC = 0xF8;
+    m_Freq = 1024;
     m_Counter = 0;
 }
 
@@ -3327,7 +3327,15 @@ uint8_t JoyPad::ReadP1()
 void JoyPad::Debug_PrintStatus()
 {
     std::cout << "*JoyPad STATUS*" << std::endl;
-    // TODO
+    std::cout << "P1=" << int_to_bin8(JoyPad::ReadP1()) << " "
+              << "Right=" << GET_BIT(joypad_state, JOYPAD_RIGHT) << " "
+              << "Left=" << GET_BIT(joypad_state, JOYPAD_LEFT) << " "
+              << "Up=" << GET_BIT(joypad_state, JOYPAD_UP) << " "
+              << "Down=" << GET_BIT(joypad_state, JOYPAD_DOWN) << " "
+              << "A=" << GET_BIT(joypad_state, JOYPAD_A) << " "
+              << "B=" << GET_BIT(joypad_state, JOYPAD_B) << " "
+              << "Select=" << GET_BIT(joypad_state, JOYPAD_SELECT) << " "
+              << "Start=" << GET_BIT(joypad_state, JOYPAD_START) << std::endl;
     std::cout << std::endl;
 }
 #endif
