@@ -88,14 +88,11 @@ blargg tests passed:
 #else
 
 #include <bitset>
-#include <chrono>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 
 #include <cstdio>
-
-using namespace std::chrono;
 
 #endif
 
@@ -751,11 +748,6 @@ enum
 
 #ifndef NDEBUG
 std::ofstream fout;
-
-inline uint64_t unix_epoch_millis()
-{
-    return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-}
 
 int int_from_string(const std::string& s, bool isHex)
 {
