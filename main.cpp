@@ -34,7 +34,6 @@ notes: both addr and v are hex
 emulator modes (TODO):
 - gui - win32 + sdl2 with logging system
 - cli - cli debugger with sdl windows (view current screen state, vram/oam state, etc.)
-- console - nerfed down console emulator for debugging with peach logs
 
 TODO: implement MBC (make cartridge class)
 */
@@ -1131,13 +1130,6 @@ public:
 };
 
 #ifdef NDEBUG
-class Renderer
-{
-};
-
-class SDLRenderer
-{};
-
 class GameBoyWindows
 {
 private:
