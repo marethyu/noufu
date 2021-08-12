@@ -782,6 +782,21 @@ std::string int_to_bin8(T i, bool prefixed=true)
 typedef void (*RenderGraphics)();
 #endif
 
+struct rgb_tuple
+{
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+};
+
+// TODO make it modificable by config file
+rgb_tuple gb_colours[4] = {
+    {224, 248, 208},
+    {136, 192, 112},
+    {52, 104, 86},
+    {8, 24, 32}
+};
+
 class GBComponent;
 class Cpu;
 class InterruptManager;
@@ -971,8 +986,8 @@ private:
     void RenderBackground();
     void RenderSprites();
 
-    void RenderPixel(int row, int col, int colour, int attr);
-    int GetColour(int colourNum, uint16_t address);
+    void RenderPixel(int row, int col, rgb_tuple colour, int attr);
+    rgb_tuple GetColour(int colourNum, uint16_t address);
 public:
     SimpleGpu(Emulator *emu);
     ~SimpleGpu();
@@ -1130,6 +1145,13 @@ public:
 };
 
 #ifdef NDEBUG
+class Renderer
+{
+};
+
+class SDLRenderer
+{};
+
 class GameBoyWindows
 {
 private:
@@ -2760,10 +2782,10 @@ void SimpleGpu::RenderSprites()
                 }
 
                 int colourNum = (GET_BIT(data2, bit) << 1) | GET_BIT(data1, bit);
-                int col = SimpleGpu::GetColour(colourNum, TEST_BIT(attributes, 4) ? 0xFF49 : 0xFF48);
+                rgb_tuple col = SimpleGpu::GetColour(colourNum, TEST_BIT(attributes, 4) ? 0xFF49 : 0xFF48);
 
                 // it's transparent for sprites
-                if (col == SHADE0)
+                if (col.r == gb_colours[SHADE0].r && col.g == gb_colours[SHADE0].g && col.b == gb_colours[SHADE0].b)
                 {
                     continue;
                 }
@@ -2781,61 +2803,27 @@ void SimpleGpu::RenderSprites()
     }
 }
 
-void SimpleGpu::RenderPixel(int row, int col, int colour, int attr)
+void SimpleGpu::RenderPixel(int row, int col, rgb_tuple colour, int attr)
 {
-    uint8_t red, green, blue;
     int offset = row * SCREEN_WIDTH * 4 + col * 4;
 
     // check if pixel is hidden behind background
     if (attr != -1)
     {
         // if the bit 7 of attributes is set then the screen pixel colour must be SHADE0 before changing colour
-        if (TEST_BIT(attr, 7) && ((m_Pixels[offset + 2] != 224) || (m_Pixels[offset + 1] != 248) || (m_Pixels[offset] != 208)))
+        if (TEST_BIT(attr, 7) && ((m_Pixels[offset + 2] != gb_colours[SHADE0].r) || (m_Pixels[offset + 1] != gb_colours[SHADE0].g) || (m_Pixels[offset] != gb_colours[SHADE0].b)))
         {
             return;
         }
     }
 
-    // TODO custom colour shades
-    switch (colour)
-    {
-    case SHADE0:
-    {
-        red = 224;
-        green = 248;
-        blue = 208;
-        break;
-    }
-    case SHADE1:
-    {
-        red = 136;
-        green = 192;
-        blue = 112;
-        break;
-    }
-    case SHADE2:
-    {
-        red = 52;
-        green = 104;
-        blue = 86;
-        break;
-    }
-    case SHADE3:
-    {
-        red = 8;
-        green = 24;
-        blue = 32;
-        break;
-    }
-    }
-
-    m_Pixels[offset]     = blue;
-    m_Pixels[offset + 1] = green;
-    m_Pixels[offset + 2] = red;
+    m_Pixels[offset]     = colour.b;
+    m_Pixels[offset + 1] = colour.g;
+    m_Pixels[offset + 2] = colour.r;
     m_Pixels[offset + 3] = 255;
 }
 
-int SimpleGpu::GetColour(int colourNum, uint16_t address)
+rgb_tuple SimpleGpu::GetColour(int colourNum, uint16_t address)
 {
     uint8_t palette = m_Emulator->m_MemControl->ReadByte(address);
     int hi, lo;
@@ -2860,7 +2848,7 @@ int SimpleGpu::GetColour(int colourNum, uint16_t address)
         break;
     }
 
-    return (GET_BIT(palette, hi) << 1) | GET_BIT(palette, lo);
+    return gb_colours[(GET_BIT(palette, hi) << 1) | GET_BIT(palette, lo)];
 }
 
 SimpleGpu::SimpleGpu(Emulator *emu)
