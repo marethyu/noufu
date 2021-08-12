@@ -32,3 +32,4 @@ implement more commands for debugging cli
 fix all TODOs
 opengl
 make GameBoyWin32 'proper' win32 class (include winproc functions like void command(WPARAM, LPARAM);, void create(HWND);, int destroy();)
+video recording (to gif)
