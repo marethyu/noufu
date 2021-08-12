@@ -3327,7 +3327,7 @@ uint8_t JoyPad::ReadP1()
 void JoyPad::Debug_PrintStatus()
 {
     std::cout << "*JoyPad STATUS*" << std::endl;
-    std::cout << "P1=" << int_to_bin8(JoyPad::ReadP1()) << " "
+    std::cout << "P1=" << int_to_bin8(JoyPad::ReadP1()) << "\n"
               << "Right=" << GET_BIT(joypad_state, JOYPAD_RIGHT) << " "
               << "Left=" << GET_BIT(joypad_state, JOYPAD_LEFT) << " "
               << "Up=" << GET_BIT(joypad_state, JOYPAD_UP) << " "
