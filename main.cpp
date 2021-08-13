@@ -1,24 +1,27 @@
 #include <algorithm>
 #include <array>
+#include <bitset>
 #include <fstream>
+#include <iomanip>
+#include <iostream>
 #include <memory>
 #include <stdexcept>
+#include <sstream>
 #include <string>
 #include <vector>
 
 #include <cstdio>
 #include <ctime>
 
-#define SCREEN_WIDTH 160
-#define SCREEN_HEIGHT 144
-
-#ifdef NDEBUG
-
 #include <Windows.h>
 
+#define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 
 #include "loguru.hpp"
+
+#define SCREEN_WIDTH 160
+#define SCREEN_HEIGHT 144
 
 #define ID_LOAD_ROM 0
 #define ID_RELOAD_ROM 1
@@ -27,18 +30,7 @@
 
 #define ID_TIMER 1
 
-#else
-
-#include <bitset>
-#include <iomanip>
-#include <iostream>
-#include <sstream>
-
-#endif
-
-#ifndef NDEBUG
-const std::string ROM_FILE_PATH = "ROMS/blargg_tests/instr_timing/instr_timing.gb";
-#endif
+const std::string ROM_FILE_PATH = "../ROMS/blargg_tests/instr_timing/instr_timing.gb";
 
 const std::string EMULATOR_NAME = "Noufu";
 
@@ -686,7 +678,6 @@ enum
     JOYPAD_START
 };
 
-#ifndef NDEBUG
 std::ofstream fout;
 
 int int_from_string(const std::string& s, bool isHex)
@@ -716,7 +707,6 @@ std::string int_to_bin8(T i, bool prefixed=true)
     stream << (prefixed ? "0b" : "") << std::bitset<8>(i);
     return stream.str();
 }
-#else
 
 int CDECL PopMessageBox(TCHAR *szTitle, UINT uType, const char* format, ...)
 {
@@ -729,7 +719,6 @@ int CDECL PopMessageBox(TCHAR *szTitle, UINT uType, const char* format, ...)
 
 	return MessageBox(nullptr, buffer, szTitle, uType);
 }
-#endif
 
 /* configurable variables */
 int SCREEN_SCALE_FACTOR;
@@ -786,7 +775,7 @@ class MBC1; // TODO
 class MemoryController;
 class JoyPad;
 class Emulator;
-#ifdef NDEBUG
+#ifdef GUI_MODE
 class GameBoyWindows;
 #endif
 
@@ -795,9 +784,7 @@ class GBComponent
 public:
     virtual void Init() = 0;
     virtual void Reset() = 0;
-#ifndef NDEBUG
     virtual void Debug_PrintStatus() = 0;
-#endif
 protected:
     Emulator *m_Emulator;
 };
@@ -871,7 +858,6 @@ public:
     void Resume();
     uint16_t GetPC() { return PC; }
 
-#ifndef NDEBUG
     void Debug_PrintStatus();
     void Debug_PrintCurrentInstruction();
     void Debug_EditRegister(int reg, int val, bool is8Bit);
@@ -881,7 +867,6 @@ public:
     // Format: [registers] (mem[pc] mem[pc+1] mem[pc+2] mem[pc+3])
     // Ex: A: 01 F: B0 B: 00 C: 13 D: 00 E: D8 H: 01 L: 4D SP: FFFE PC: 00:0100 (00 C3 13 02)
     void Debug_LogState();
-#endif
 };
 
 class InterruptManager : GBComponent
@@ -905,9 +890,7 @@ public:
     void RequestInterrupt(int i);
     void InterruptRoutine();
 
-#ifndef NDEBUG
     void Debug_PrintStatus();
-#endif
 };
 
 class Timer : GBComponent
@@ -929,9 +912,7 @@ public:
     int ClockSelect();
 
     uint16_t DIV;
-#ifndef NDEBUG
     void Debug_PrintStatus();
-#endif
 };
 
 class SimpleGpu : GBComponent
@@ -972,9 +953,7 @@ public:
 
     std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> m_Pixels;
 
-#ifndef NDEBUG
     void Debug_PrintStatus();
-#endif
 };
 
 class MemoryController : GBComponent
@@ -1009,12 +988,10 @@ public:
     void WriteByte(uint16_t address, uint8_t data);
     void WriteWord(uint16_t address, uint16_t data);
 
-#ifndef NDEBUG
     void Debug_PrintStatus() {} // nothing
     void Debug_PrintMemory(uint16_t address);
     void Debug_EditMemory(uint16_t address, uint8_t data);
     void Debug_PrintMemoryRange(uint16_t start, uint16_t end);
-#endif
 
     std::array<uint8_t, 0x80> m_IO;
     uint8_t &IF = m_IO[0x0F];
@@ -1060,9 +1037,7 @@ public:
     void ReleaseButton(int button);
     uint8_t ReadP1();
 
-#ifndef NDEBUG
     void Debug_PrintStatus();
-#endif
 };
 
 class Emulator
@@ -1076,11 +1051,9 @@ public:
     void Update();
     void Tick(); // + 1 M-cycle
 
-#ifndef NDEBUG
     void Debug_Step(std::vector<char>& blargg_serial, int times);
     void Debug_StepTill(std::vector<char>& blargg_serial, uint16_t x);
     void Debug_PrintEmulatorStatus();
-#endif
 
     // All components
     std::unique_ptr<Cpu> m_Cpu;
@@ -1094,7 +1067,7 @@ public:
     int m_PrevTotalCycles;
 };
 
-#ifdef NDEBUG
+#ifdef GUI_MODE
 class GameBoyWindows
 {
 private:
@@ -1429,7 +1402,7 @@ void Cpu::HandlePrefixCB()
     }
     default:
     {
-#ifndef NDEBUG
+#ifndef GUI_MODE
         std::cerr << "Opcode: " << int_to_hex(opcode) << std::endl;
         Cpu::Debug_PrintStatus();
 #else
@@ -1490,7 +1463,7 @@ void Cpu::Step()
 
     m_Emulator->m_IntManager->InterruptRoutine();
 
-#ifndef NDEBUG
+#ifndef GUI_MODE
     Cpu::Debug_LogState();
 #endif
 
@@ -2173,7 +2146,7 @@ void Cpu::Step()
     }
     default:
     {
-#ifndef NDEBUG
+#ifndef GUI_MODE
         std::cerr << "Opcode: " << int_to_hex(opcode) << std::endl;
         Cpu::Debug_PrintStatus();
 #else
@@ -2215,7 +2188,6 @@ void Cpu::Resume()
     bHalted = false;
 }
 
-#ifndef NDEBUG
 void Cpu::Debug_PrintStatus()
 {
     std::cout << "*CPU STATUS*" << std::endl;
@@ -2322,7 +2294,6 @@ void Cpu::Debug_LogState()
          << int_to_hex(+m_Emulator->m_MemControl->ReadByte(PC + 3), 2, false) << ")"
          << std::endl;
 }
-#endif
 
 InterruptManager::InterruptManager(Emulator *emu)
 {
@@ -2383,11 +2354,12 @@ bool InterruptManager::SetHaltMode()
         return false;
     }
 
-#ifndef NDEBUG
+#ifndef GUI_MODE
     std::cerr << "Yo nigga, InterruptManager::SetHaltMode has gone mad!" << std::endl;
 #else
     LOG_IF_F(WARNING, true, "Yo nigga, InterruptManager::SetHaltMode has gone mad!");
 #endif
+
     return false;
 }
 
@@ -2423,7 +2395,6 @@ void InterruptManager::InterruptRoutine()
     }
 }
 
-#ifndef NDEBUG
 void InterruptManager::Debug_PrintStatus()
 {
     std::cout << "*INTERRUPT MANAGER STATUS*" << std::endl;
@@ -2432,7 +2403,6 @@ void InterruptManager::Debug_PrintStatus()
               << "IE=" << int_to_bin8(m_Emulator->m_MemControl->IE) << std::endl;
     std::cout << std::endl;
 }
-#endif
 
 Timer::Timer(Emulator *emu)
 {
@@ -2512,7 +2482,6 @@ int Timer::ClockSelect()
     return m_Emulator->m_MemControl->TAC & 0x3;
 }
 
-#ifndef NDEBUG
 void Timer::Debug_PrintStatus()
 {
     std::cout << "*TIMER STATUS*" << std::endl;
@@ -2522,7 +2491,6 @@ void Timer::Debug_PrintStatus()
               << "TAC=" << int_to_bin8(m_Emulator->m_MemControl->TAC) << std::endl;
     std::cout << std::endl;
 }
-#endif
 
 bool SimpleGpu::bLCDEnabled()
 {
@@ -2807,9 +2775,7 @@ SimpleGpu::~SimpleGpu()
 
 void SimpleGpu::Init()
 {
-#ifndef NDEBUG
-    m_Emulator->m_MemControl->LY = 0x90; // TODO remove this
-#endif
+    m_Emulator->m_MemControl->LY = 0x00;
     std::fill(m_Pixels.begin(), m_Pixels.end(), 0);
 }
 
@@ -2819,11 +2785,7 @@ void SimpleGpu::Reset()
     m_Emulator->m_MemControl->STAT = 0x85;
     m_Emulator->m_MemControl->SCY = 0x00;
     m_Emulator->m_MemControl->SCX = 0x00;
-#ifndef NDEBUG
-    m_Emulator->m_MemControl->LY = 0x90;
-#else
     m_Emulator->m_MemControl->LY = 0x00;
-#endif
     m_Emulator->m_MemControl->LYC = 0x00;
     m_Emulator->m_MemControl->BGP = 0xFC;
     m_Emulator->m_MemControl->OBP0 = 0xFF;
@@ -2832,9 +2794,18 @@ void SimpleGpu::Reset()
     m_Emulator->m_MemControl->WX = 0x00;
 }
 
+/* TODO when running boot run, the emulator takes a while to exit this loop
+
+LD A,($FF00+$44)    ; $0064  wait for screen frame
+CP $90      ; $0066
+JR NZ, Addr_0064    ; $0068
+DEC C           ; $006a
+JR NZ, Addr_0064    ; $006b
+
+figure out why
+*/
 void SimpleGpu::Update(int cycles)
 {
-#ifdef NDEBUG
     SimpleGpu::UpdateLCDStatus();
 
     if (!SimpleGpu::bLCDEnabled()) return;
@@ -2859,7 +2830,6 @@ void SimpleGpu::Update(int cycles)
             SimpleGpu::DrawCurrentLine();
         }
     }
-#endif
 }
 
 int SimpleGpu::GetMode()
@@ -2867,14 +2837,12 @@ int SimpleGpu::GetMode()
     return m_Emulator->m_MemControl->STAT & 0b00000011;
 }
 
-#ifndef NDEBUG
 void SimpleGpu::Debug_PrintStatus()
 {
     std::cout << "*GPU STATUS*" << std::endl;
     // TODO
     std::cout << std::endl;
 }
-#endif
 
 void MemoryController::InitBootROM()
 {
@@ -2984,7 +2952,7 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
     }
     else if (address >= 0xA000 && address < 0xC000)
     {
-#ifndef NDEBUG
+#ifndef GUI_MODE
         std::cout << "WARNING: Attempted to read from $A000-$BFFF; Probably need to implement MBC; address=" << int_to_hex(address) << std::endl;
 #else
         LOG_IF_F(WARNING, true, "Attempted to read from $A000-$BFFF; Probably need to implement MBC; address=%04X", address);
@@ -3005,7 +2973,7 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
     }
     else if (address >= 0xFEA0 && address < 0xFF00)
     {
-#ifndef NDEBUG
+#ifndef GUI_MODE
         std::cout << "WARNING: Attempted to read from $FEA0-$FEFF; address=" << int_to_hex(address) << std::endl;
 #else
         LOG_IF_F(WARNING, true, "Attempted to read from $FEA0-$FEFF; address=%04X", address);
@@ -3034,7 +3002,7 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
     }
     else
     {
-#ifndef NDEBUG
+#ifndef GUI_MODE
         std::cerr << "MemoryController::ReadByte: Invalid address range: " << int_to_hex(address) << std::endl;
         m_Emulator->m_Cpu->Debug_PrintStatus();
 #else
@@ -3056,7 +3024,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
 {
     if (inBootMode && address <= 0xFF)
     {
-#ifndef NDEBUG
+#ifndef GUI_MODE
         std::cout << "WARNING: Attempted to write to $00-$FF; address=" << int_to_hex(address) << std::endl;
 #else
         LOG_IF_F(WARNING, true, "Attempted to write to $00-$FF; address=%04X", address);
@@ -3064,7 +3032,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else if (address < 0x8000)
     {
-#ifndef NDEBUG
+#ifndef GUI_MODE
         std::cout << "WARNING: Attempted to write to $0000-$7FFF; address=" << int_to_hex(address) << std::endl;
 #else
         LOG_IF_F(WARNING, true, "Attempted to write to $0000-$7FFF; address=%04X", address);
@@ -3076,7 +3044,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else if (address >= 0xA000 && address < 0xC000)
     {
-#ifndef NDEBUG
+#ifndef GUI_MODE
         std::cout << "WARNING: Attempted to write to $A000-$BFFF; Probably need to implement MBC; address=" << int_to_hex(address) << std::endl;
 #else
         LOG_IF_F(WARNING, true, "Attempted to write to $A000-$BFFF; Probably need to implement MBC; address=%04X", address);
@@ -3096,7 +3064,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else if (address >= 0xFEA0 && address < 0xFF00)
     {
-#ifndef NDEBUG
+#ifndef GUI_MODE
         std::cout << "WARNING: Attempted to write to $FEA0-$FEFF; address=" << int_to_hex(address) << std::endl;
 #else
         LOG_IF_F(WARNING, true, "Attempted to write to $FEA0-$FEFF; address=%04X", address);
@@ -3145,7 +3113,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else
     {
-#ifndef NDEBUG
+#ifndef GUI_MODE
         std::cerr << "MemoryController::WriteByte: Invalid address range: " << int_to_hex(address) << std::endl;
         m_Emulator->m_Cpu->Debug_PrintStatus();
 #else
@@ -3163,7 +3131,6 @@ void MemoryController::WriteWord(uint16_t address, uint16_t data)
     MemoryController::WriteByte(address + 1, high);
 }
 
-#ifndef NDEBUG
 void MemoryController::Debug_PrintMemory(uint16_t address)
 {
     std::cout << "memory value at address " << int_to_hex(address) << " is " << int_to_hex(+MemoryController::ReadByte(address), 2) << std::endl;
@@ -3183,7 +3150,6 @@ void MemoryController::Debug_PrintMemoryRange(uint16_t start, uint16_t end)
         std::cout << int_to_hex(addr) << ": " << int_to_hex(+MemoryController::ReadByte(addr), 2) << std::endl;
     }
 }
-#endif
 
 JoyPad::JoyPad(Emulator *emu)
 {
@@ -3247,7 +3213,6 @@ uint8_t JoyPad::ReadP1()
     return jp_reg;
 }
 
-#ifndef NDEBUG
 void JoyPad::Debug_PrintStatus()
 {
     std::cout << "*JoyPad STATUS*" << std::endl;
@@ -3262,7 +3227,6 @@ void JoyPad::Debug_PrintStatus()
               << "Start=" << GET_BIT(joypad_state, JOYPAD_START) << std::endl;
     std::cout << std::endl;
 }
-#endif
 
 Emulator::Emulator()
 {
@@ -3303,8 +3267,9 @@ void Emulator::Update()
     {
         int initial_cycles = m_TotalCycles;
         m_Cpu->Step();
-        m_Gpu->Update(m_TotalCycles - initial_cycles);
-        m_Timer->Update(m_TotalCycles - initial_cycles);
+        int cycles = m_TotalCycles - initial_cycles;
+        m_Gpu->Update(cycles);
+        m_Timer->Update(cycles);
     }
 
     m_PrevTotalCycles = m_TotalCycles;
@@ -3315,7 +3280,6 @@ void Emulator::Tick()
     m_TotalCycles += 4;
 }
 
-#ifndef NDEBUG
 void Emulator::Debug_Step(std::vector<char>& blargg_serial, int times)
 {
     for (int i = 0; i < times; ++i)
@@ -3327,8 +3291,9 @@ void Emulator::Debug_Step(std::vector<char>& blargg_serial, int times)
 
         int initial_cycles = m_TotalCycles;
         m_Cpu->Step();
-        m_Gpu->Update(m_TotalCycles - initial_cycles);
-        m_Timer->Update(m_TotalCycles - initial_cycles);
+        int cycles = m_TotalCycles - initial_cycles;
+        m_Gpu->Update(cycles);
+        m_Timer->Update(cycles);
 
         // blarggs test - serial output
         if (m_MemControl->ReadByte(0xFF02) == 0x81)
@@ -3355,9 +3320,9 @@ void Emulator::Debug_PrintEmulatorStatus()
     m_Gpu->Debug_PrintStatus();
     m_JoyPad->Debug_PrintStatus();
 }
-#endif
 
-#ifdef NDEBUG
+#ifdef GUI_MODE
+
 GameBoyWindows::GameBoyWindows()
 {
     m_Emulator = new Emulator();
@@ -3517,9 +3482,7 @@ void GameBoyWindows::Destroy()
 {
     PostQuitMessage(0);
 }
-#endif
 
-#ifdef NDEBUG
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     static GameBoyWindows gb;
@@ -3699,9 +3662,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     return (int) msg.wParam;
 }
+
 #else
+
 int main(int argc, char *argv[])
 {
+    std::srand(unsigned(std::time(nullptr)));
+    ConfigureEmulatorSettings();
+
     Emulator *emu = new Emulator();
 
     emu->InitComponents();
@@ -3853,4 +3821,5 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
 #endif

@@ -1,6 +1,6 @@
 Noufu devdoc
 
-GUI compile: g++ main.cpp loguru.cpp -o bin/main.exe -D NDEBUG -std=c++14 -lSDL2 -lcomdlg32 -mwindows -Wl,-subsystem,windows --machine-windows
+GUI compile: g++ main.cpp loguru.cpp -o bin/main.exe -D GUI_MODE -std=c++14 -lSDL2 -lcomdlg32 -mwindows -Wl,-subsystem,windows --machine-windows
 CLI compile: g++ main.cpp -o bin/main
 
 Stage 1: Pass Blargg's CPU tests (complete)
