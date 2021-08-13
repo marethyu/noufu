@@ -1,7 +1,7 @@
 Noufu devdoc
 
-GUI compile: g++ main.cpp loguru.cpp -o main -D NDEBUG -std=c++14 -lSDL2 -lcomdlg32 -mwindows -Wl,-subsystem,windows --machine-windows */
-CLI compile: g++ main.cpp -o main */
+GUI compile: g++ main.cpp loguru.cpp -o bin/main.exe -D NDEBUG -std=c++14 -lSDL2 -lcomdlg32 -mwindows -Wl,-subsystem,windows --machine-windows
+CLI compile: g++ main.cpp -o bin/main
 
 Stage 1: Pass Blargg's CPU tests (complete)
 Stage 2: Refactor code (make seperate files for each class) and implement PPU to run Boot rom (don't forgot to make a Makefile)
