@@ -37,7 +37,7 @@ const std::string EMULATOR_NAME = "Noufu";
 const std::string CONFIG_FILE_PATH = "config";
 
 // Maximum number of cycles per update
-const int MAX_CYCLES = 70224;         // 154 scanlines * 456 cycles per frame = 70224
+const int MAX_CYCLES = 70224; // 154 scanlines * 456 cycles per frame = 70224
 
 const int DOTS_PER_SCANLINE = 456;
 
@@ -725,6 +725,7 @@ int SCREEN_SCALE_FACTOR;
 bool ENABLE_BOOT_ROM;
 std::string BOOT_ROM_PATH;
 
+// TODO create a config file with default settings if there are none
 void ConfigureEmulatorSettings()
 {
     std::ifstream istream(CONFIG_FILE_PATH, std::ios::in);
