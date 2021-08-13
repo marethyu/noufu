@@ -1172,7 +1172,7 @@ public:
     void Create(HWND);
     void FixSize();
     void Update();
-    void RenderGame();
+    void RenderGraphics();
     void HandleKeyDown(WPARAM wParam);
     void HandleKeyUp(WPARAM wParam);
     void CleanUp();
@@ -3486,7 +3486,7 @@ void GameBoyWindows::Update()
     m_Emulator->Update();
 }
 
-void GameBoyWindows::RenderGame()
+void GameBoyWindows::RenderGraphics()
 {
     SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 255);
     SDL_RenderClear(m_Renderer);
@@ -3616,7 +3616,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     case WM_PAINT:
     {
-        gb.RenderGame();
+        gb.RenderGraphics();
         break;
     }
     case WM_COMMAND:
