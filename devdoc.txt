@@ -9,7 +9,6 @@ Stage 3: Pass other Blargg's tests (mem_timing.gb, mem_timing2.gb, halt_bug.gb)
 Stage 4: Make sure it can run Tetris without problems
 Stage 5: Implement a seperate class for cartridge with basic MBC support and make sure it can run Mario
 
-
 debug cmds:
 step ([x]) - step cpu for x times (x=1 is default)
 quit - quit debugger
