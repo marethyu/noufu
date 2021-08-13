@@ -1071,7 +1071,7 @@ public:
 class GameBoyWindows
 {
 private:
-    Emulator *m_Emulator;
+    std::unique_ptr<Emulator> m_Emulator;
 
     SDL_Window *m_Window;
     SDL_Renderer *m_Renderer;
@@ -1421,7 +1421,7 @@ Cpu::Cpu(Emulator *emu)
 
 Cpu::~Cpu()
 {
-    delete m_Emulator;
+    
 }
 
 void Cpu::Init()
@@ -2302,7 +2302,7 @@ InterruptManager::InterruptManager(Emulator *emu)
 
 InterruptManager::~InterruptManager()
 {
-    delete m_Emulator;
+    
 }
 
 void InterruptManager::Init()
@@ -2411,7 +2411,7 @@ Timer::Timer(Emulator *emu)
 
 Timer::~Timer()
 {
-    delete m_Emulator;
+    
 }
 
 void Timer::Init()
@@ -2770,7 +2770,7 @@ SimpleGpu::SimpleGpu(Emulator *emu)
 
 SimpleGpu::~SimpleGpu()
 {
-    delete m_Emulator;
+    
 }
 
 void SimpleGpu::Init()
@@ -2880,7 +2880,7 @@ MemoryController::MemoryController(Emulator *emu)
 
 MemoryController::~MemoryController()
 {
-    delete m_Emulator;
+    
 }
 
 void MemoryController::Init()
@@ -3158,7 +3158,7 @@ JoyPad::JoyPad(Emulator *emu)
 
 JoyPad::~JoyPad()
 {
-    delete m_Emulator;
+    
 }
 
 void JoyPad::Init()
@@ -3230,16 +3230,18 @@ void JoyPad::Debug_PrintStatus()
 
 Emulator::Emulator()
 {
-    m_Cpu = std::unique_ptr<Cpu>(new Cpu(this));
-    m_MemControl = std::unique_ptr<MemoryController>(new MemoryController(this));
-    m_IntManager = std::unique_ptr<InterruptManager>(new InterruptManager(this));
-    m_Timer = std::unique_ptr<Timer>(new Timer(this));
-    m_Gpu = std::unique_ptr<SimpleGpu>(new SimpleGpu(this));
-    m_JoyPad = std::unique_ptr<JoyPad>(new JoyPad(this));
+    m_Cpu = std::make_unique<Cpu>(this);
+    m_MemControl = std::make_unique<MemoryController>(this);
+    m_IntManager = std::make_unique<InterruptManager>(this);
+    m_Timer = std::make_unique<Timer>(this);
+    m_Gpu = std::make_unique<SimpleGpu>(this);
+    m_JoyPad = std::make_unique<JoyPad>(this);
 }
 
 Emulator::~Emulator()
-{}
+{
+    
+}
 
 void Emulator::InitComponents()
 {
@@ -3325,13 +3327,12 @@ void Emulator::Debug_PrintEmulatorStatus()
 
 GameBoyWindows::GameBoyWindows()
 {
-    m_Emulator = new Emulator();
+    m_Emulator = std::make_unique<Emulator>();
 }
 
 GameBoyWindows::~GameBoyWindows()
 {
-    // if you add this line, it will slow the window closing procedure...
-    // delete m_Emulator;
+    
 }
 
 void GameBoyWindows::Initialize()
@@ -3670,7 +3671,7 @@ int main(int argc, char *argv[])
     std::srand(unsigned(std::time(nullptr)));
     ConfigureEmulatorSettings();
 
-    Emulator *emu = new Emulator();
+    std::unique_ptr<Emulator> emu = std::make_unique<Emulator>();
 
     emu->InitComponents();
     emu->m_MemControl->LoadROM(ROM_FILE_PATH /*argv[1]*/);
