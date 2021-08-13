@@ -764,11 +764,11 @@ rgb_tuple gb_colours[4] = {
 };
 
 class GBComponent;
-class Cpu;
+class CPU;
 class InterruptManager;
 class Timer;
-class SimpleGpu;
-class Gpu; /* GPU with pixel FIFO */ // TODO
+class SimpleGPU;
+class GPU; /* GPU with pixel FIFO */ // TODO
 class Cartridge; // TODO
 class MBCBase; /* abstract */ // TODO
 class MBC1; // TODO
@@ -789,7 +789,7 @@ protected:
     Emulator *m_Emulator;
 };
 
-class Cpu : GBComponent
+class CPU : GBComponent
 {
 private:
     // reg8 is arranged in this order (works for little-endian machines):
@@ -847,8 +847,8 @@ private:
     void ShiftBitsRight(uint8_t &n, bool logical=false);
     void HandlePrefixCB();
 public:
-    Cpu(Emulator *emu);
-    ~Cpu();
+    CPU(Emulator *emu);
+    ~CPU();
 
     void Init();
     void Reset();
@@ -890,6 +890,9 @@ public:
     void RequestInterrupt(int i);
     void InterruptRoutine();
 
+    uint8_t &IF;
+    uint8_t &IE;
+
     void Debug_PrintStatus();
 };
 
@@ -912,10 +915,14 @@ public:
     int ClockSelect();
 
     uint16_t DIV;
+    uint8_t &TIMA;
+    uint8_t &TMA;
+    uint8_t &TAC;
+
     void Debug_PrintStatus();
 };
 
-class SimpleGpu : GBComponent
+class SimpleGPU : GBComponent
 {
 private:
     Emulator *m_Emulator;
@@ -943,8 +950,8 @@ private:
     void RenderPixel(int row, int col, rgb_tuple colour, int attr);
     rgb_tuple GetColour(int colourNum, uint16_t address);
 public:
-    SimpleGpu(Emulator *emu);
-    ~SimpleGpu();
+    SimpleGPU(Emulator *emu);
+    ~SimpleGPU();
 
     void Init();
     void Reset();
@@ -952,6 +959,18 @@ public:
     int GetMode();
 
     std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> m_Pixels;
+
+    uint8_t &LCDC;
+    uint8_t &STAT;
+    uint8_t &SCY;
+    uint8_t &SCX;
+    uint8_t &LY;
+    uint8_t &LYC;
+    uint8_t &BGP;
+    uint8_t &OBP0;
+    uint8_t &OBP1;
+    uint8_t &WY;
+    uint8_t &WX;
 
     void Debug_PrintStatus();
 };
@@ -994,26 +1013,8 @@ public:
     void Debug_PrintMemoryRange(uint16_t start, uint16_t end);
 
     std::array<uint8_t, 0x80> m_IO;
-    uint8_t &IF = m_IO[0x0F];
+
     uint8_t IE;
-
-    uint8_t &TIMA = m_IO[0x05];
-    uint8_t &TMA = m_IO[0x06];
-    uint8_t &TAC = m_IO[0x07];
-
-    uint8_t &LCDC = m_IO[0x40];
-    uint8_t &STAT = m_IO[0x41];
-    uint8_t &SCY = m_IO[0x42];
-    uint8_t &SCX = m_IO[0x43];
-    uint8_t &LY = m_IO[0x44];
-    uint8_t &LYC = m_IO[0x45];
-    uint8_t &BGP = m_IO[0x47];
-    uint8_t &OBP0 = m_IO[0x48];
-    uint8_t &OBP1 = m_IO[0x49];
-    uint8_t &WY = m_IO[0x4A];
-    uint8_t &WX = m_IO[0x4B];
-
-    uint8_t &P1 = m_IO[0x00]; // joypad
 };
 
 // good explanation here https://github.com/gbdev/pandocs/blob/be820673f71c8ca514bab4d390a3004c8273f988/historical/1995-Jan-28-GAMEBOY.txt#L165
@@ -1021,6 +1022,8 @@ class JoyPad : GBComponent
 {
 private:
     Emulator *m_Emulator;
+
+    uint8_t &P1;
 
     // upper 4 bits - standard buttons
     // lower 4 bits - directional buttons
@@ -1056,11 +1059,11 @@ public:
     void Debug_PrintEmulatorStatus();
 
     // All components
-    std::unique_ptr<Cpu> m_Cpu;
+    std::unique_ptr<CPU> m_CPU;
     std::unique_ptr<MemoryController> m_MemControl;
     std::unique_ptr<InterruptManager> m_IntManager;
     std::unique_ptr<Timer> m_Timer;
-    std::unique_ptr<SimpleGpu> m_Gpu;
+    std::unique_ptr<SimpleGPU> m_GPU;
     std::unique_ptr<JoyPad> m_JoyPad;
 
     int m_TotalCycles; // T-cycles
@@ -1097,77 +1100,77 @@ public:
 
 /* TODO prevent accesses to VRAM/OAM during certain PPU modes... maybe when accessing VRAM/OAM, do it thru PPU (PPU is responsible for VRAM/OAM accesses) */
 
-uint8_t Cpu::ReadByte(uint16_t address) const
+uint8_t CPU::ReadByte(uint16_t address) const
 {
     m_Emulator->Tick();
     return m_Emulator->m_MemControl->ReadByte(address);
 }
 
-uint16_t Cpu::ReadWord(uint16_t address) const
+uint16_t CPU::ReadWord(uint16_t address) const
 {
     m_Emulator->Tick();
     m_Emulator->Tick();
     return m_Emulator->m_MemControl->ReadWord(address);
 }
 
-void Cpu::WriteByte(uint16_t address, uint8_t data)
+void CPU::WriteByte(uint16_t address, uint8_t data)
 {
     m_Emulator->Tick();
     m_Emulator->m_MemControl->WriteByte(address, data);
 }
 
-void Cpu::WriteWord(uint16_t address, uint16_t data)
+void CPU::WriteWord(uint16_t address, uint16_t data)
 {
     m_Emulator->Tick();
     m_Emulator->Tick();
     m_Emulator->m_MemControl->WriteWord(address, data);
 }
 
-uint8_t Cpu::NextByte()
+uint8_t CPU::NextByte()
 {
-    return Cpu::ReadByte(PC++);
+    return CPU::ReadByte(PC++);
 }
 
-uint16_t Cpu::NextWord()
+uint16_t CPU::NextWord()
 {
-    uint16_t word = Cpu::ReadWord(PC);
+    uint16_t word = CPU::ReadWord(PC);
     PC += 2;
     return word;
 }
 
-bool Cpu::IsFlagSet(int flag)
+bool CPU::IsFlagSet(int flag)
 {
     return TEST_BIT(F, flag);
 }
 
-void Cpu::ModifyFlag(int flag, int value)
+void CPU::ModifyFlag(int flag, int value)
 {
     F = (F & ~(1 << flag)) | (value << flag);
 }
 
-void Cpu::Push(uint16_t data)
+void CPU::Push(uint16_t data)
 {
-    Cpu::WriteByte(--SP, data >> 8); // hi
-    Cpu::WriteByte(--SP, data & 0xFF); // lo
+    CPU::WriteByte(--SP, data >> 8); // hi
+    CPU::WriteByte(--SP, data & 0xFF); // lo
 }
 
-uint16_t Cpu::Pop()
+uint16_t CPU::Pop()
 {
-    uint16_t data = Cpu::ReadWord(SP);
+    uint16_t data = CPU::ReadWord(SP);
     SP += 2;
     return data;
 }
 
-bool Cpu::Condition(int i)
+bool CPU::Condition(int i)
 {
     bool result = false;
 
     switch (i)
     {
-    case 0: result = !Cpu::IsFlagSet(FLAG_Z); break;
-    case 1: result =  Cpu::IsFlagSet(FLAG_Z); break;
-    case 2: result = !Cpu::IsFlagSet(FLAG_C); break;
-    case 3: result =  Cpu::IsFlagSet(FLAG_C); break;
+    case 0: result = !CPU::IsFlagSet(FLAG_Z); break;
+    case 1: result =  CPU::IsFlagSet(FLAG_Z); break;
+    case 2: result = !CPU::IsFlagSet(FLAG_C); break;
+    case 3: result =  CPU::IsFlagSet(FLAG_C); break;
     }
 
     if (result) m_Emulator->Tick();
@@ -1175,104 +1178,104 @@ bool Cpu::Condition(int i)
     return result;
 }
 
-void Cpu::Call(uint16_t addr)
+void CPU::Call(uint16_t addr)
 {
-    Cpu::Push(PC);
+    CPU::Push(PC);
     PC = addr;
 }
 
-void Cpu::RotateBitsLeft(uint8_t &n, bool circular, bool resetZ)
+void CPU::RotateBitsLeft(uint8_t &n, bool circular, bool resetZ)
 {
     bool bIsBit7Set = TEST_BIT(n, 7);
     n <<= 1;
-    if (circular ? bIsBit7Set : Cpu::IsFlagSet(FLAG_C)) SET_BIT(n, 0);
-    Cpu::ModifyFlag(FLAG_Z, resetZ ? 0 : n == 0);
-    Cpu::ModifyFlag(FLAG_N, 0);
-    Cpu::ModifyFlag(FLAG_H, 0);
-    Cpu::ModifyFlag(FLAG_C, bIsBit7Set);
+    if (circular ? bIsBit7Set : CPU::IsFlagSet(FLAG_C)) SET_BIT(n, 0);
+    CPU::ModifyFlag(FLAG_Z, resetZ ? 0 : n == 0);
+    CPU::ModifyFlag(FLAG_N, 0);
+    CPU::ModifyFlag(FLAG_H, 0);
+    CPU::ModifyFlag(FLAG_C, bIsBit7Set);
 }
 
-void Cpu::RotateBitsRight(uint8_t &n, bool circular, bool resetZ)
+void CPU::RotateBitsRight(uint8_t &n, bool circular, bool resetZ)
 {
     bool bIsBit0Set = TEST_BIT(n, 0);
     n >>= 1;
-    if (circular ? bIsBit0Set : Cpu::IsFlagSet(FLAG_C)) SET_BIT(n, 7);
-    Cpu::ModifyFlag(FLAG_Z, resetZ ? 0 : n == 0);
-    Cpu::ModifyFlag(FLAG_N, 0);
-    Cpu::ModifyFlag(FLAG_H, 0);
-    Cpu::ModifyFlag(FLAG_C, bIsBit0Set);
+    if (circular ? bIsBit0Set : CPU::IsFlagSet(FLAG_C)) SET_BIT(n, 7);
+    CPU::ModifyFlag(FLAG_Z, resetZ ? 0 : n == 0);
+    CPU::ModifyFlag(FLAG_N, 0);
+    CPU::ModifyFlag(FLAG_H, 0);
+    CPU::ModifyFlag(FLAG_C, bIsBit0Set);
 }
 
-void Cpu::ShiftBitsLeft(uint8_t &n)
+void CPU::ShiftBitsLeft(uint8_t &n)
 {
     bool bIsBit7Set = TEST_BIT(n, 7);
     n <<= 1;
-    Cpu::ModifyFlag(FLAG_Z, n == 0);
-    Cpu::ModifyFlag(FLAG_N, 0);
-    Cpu::ModifyFlag(FLAG_H, 0);
-    Cpu::ModifyFlag(FLAG_C, bIsBit7Set);
+    CPU::ModifyFlag(FLAG_Z, n == 0);
+    CPU::ModifyFlag(FLAG_N, 0);
+    CPU::ModifyFlag(FLAG_H, 0);
+    CPU::ModifyFlag(FLAG_C, bIsBit7Set);
 }
 
-void Cpu::ShiftBitsRight(uint8_t &n, bool logical)
+void CPU::ShiftBitsRight(uint8_t &n, bool logical)
 {
     bool bIsBit0Set = TEST_BIT(n, 0);
     bool bIsBit7Set = TEST_BIT(n, 7);
     n >>= 1;
     if (!logical && bIsBit7Set) SET_BIT(n, 7); // The content of bit 7 is unchanged. (see the gameboy programming manual)
-    Cpu::ModifyFlag(FLAG_Z, n == 0);
-    Cpu::ModifyFlag(FLAG_N, 0);
-    Cpu::ModifyFlag(FLAG_H, 0);
-    Cpu::ModifyFlag(FLAG_C, bIsBit0Set);
+    CPU::ModifyFlag(FLAG_Z, n == 0);
+    CPU::ModifyFlag(FLAG_N, 0);
+    CPU::ModifyFlag(FLAG_H, 0);
+    CPU::ModifyFlag(FLAG_C, bIsBit0Set);
 }
 
-void Cpu::HandlePrefixCB()
+void CPU::HandlePrefixCB()
 {
     uint8_t opcode;
 
-    switch (opcode = Cpu::NextByte())
+    switch (opcode = CPU::NextByte())
     {
     /* rl(c) r8 */
     case 0x00: case 0x01: case 0x02: case 0x03: case 0x04: case 0x05: case 0x07: // rlc r8
     case 0x10: case 0x11: case 0x12: case 0x13: case 0x14: case 0x15: case 0x17: // rl r8
     {
-        Cpu::RotateBitsLeft(*reg8_group[opcode & 7], !((opcode >> 3) & 7));
+        CPU::RotateBitsLeft(*reg8_group[opcode & 7], !((opcode >> 3) & 7));
         break;
     }
     /* rl(c) (HL) */
     case 0x06: case 0x16:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
-        Cpu::RotateBitsLeft(hl, opcode == 0x06);
-        Cpu::WriteByte(HL, hl);
+        uint8_t hl = CPU::ReadByte(HL);
+        CPU::RotateBitsLeft(hl, opcode == 0x06);
+        CPU::WriteByte(HL, hl);
         break;
     }
     /* rr(c) r8 */
     case 0x08: case 0x09: case 0x0A: case 0x0B: case 0x0C: case 0x0D: case 0x0F: // rrc r8
     case 0x18: case 0x19: case 0x1A: case 0x1B: case 0x1C: case 0x1D: case 0x1F: // rr r8
     {
-        Cpu::RotateBitsRight(*reg8_group[(opcode & 0x0F) - 0x08], !((opcode >> 4) & 0x0F));
+        CPU::RotateBitsRight(*reg8_group[(opcode & 0x0F) - 0x08], !((opcode >> 4) & 0x0F));
         break;
     }
     /* rr(c) (HL) */
     case 0x0E: case 0x1E:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
-        Cpu::RotateBitsRight(hl, opcode == 0x0E);
-        Cpu::WriteByte(HL, hl);
+        uint8_t hl = CPU::ReadByte(HL);
+        CPU::RotateBitsRight(hl, opcode == 0x0E);
+        CPU::WriteByte(HL, hl);
         break;
     }
     /* sla r8 */
     case 0x20: case 0x21: case 0x22: case 0x23: case 0x24: case 0x25: case 0x27: // sla r8
     {
-        Cpu::ShiftBitsLeft(*reg8_group[opcode - 0x20]);
+        CPU::ShiftBitsLeft(*reg8_group[opcode - 0x20]);
         break;
     }
     /* sla (HL) */
     case 0x26:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
-        Cpu::ShiftBitsLeft(hl);
-        Cpu::WriteByte(HL, hl);
+        uint8_t hl = CPU::ReadByte(HL);
+        CPU::ShiftBitsLeft(hl);
+        CPU::WriteByte(HL, hl);
         break;
     }
     /* swap r8 */
@@ -1281,51 +1284,51 @@ void Cpu::HandlePrefixCB()
         int idx = opcode - 0x30;
         uint8_t n = *reg8_group[idx];
         SWAP_NIBBLES8(n);
-        Cpu::ModifyFlag(FLAG_Z, n == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 0);
-        Cpu::ModifyFlag(FLAG_C, 0);
+        CPU::ModifyFlag(FLAG_Z, n == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 0);
+        CPU::ModifyFlag(FLAG_C, 0);
         *reg8_group[idx] = n;
         break;
     }
     /* swap (HL) */
     case 0x36:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
+        uint8_t hl = CPU::ReadByte(HL);
         SWAP_NIBBLES8(hl);
-        Cpu::ModifyFlag(FLAG_Z, hl == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 0);
-        Cpu::ModifyFlag(FLAG_C, 0);
-        Cpu::WriteByte(HL, hl);
+        CPU::ModifyFlag(FLAG_Z, hl == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 0);
+        CPU::ModifyFlag(FLAG_C, 0);
+        CPU::WriteByte(HL, hl);
         break;
     }
     /* sra r8 */
     case 0x28: case 0x29: case 0x2A: case 0x2B: case 0x2C: case 0x2D: case 0x2F: // sra r8
     {
-        Cpu::ShiftBitsRight(*reg8_group[opcode - 0x28]);
+        CPU::ShiftBitsRight(*reg8_group[opcode - 0x28]);
         break;
     }
     /* sra (HL) */
     case 0x2E:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
-        Cpu::ShiftBitsRight(hl);
-        Cpu::WriteByte(HL, hl);
+        uint8_t hl = CPU::ReadByte(HL);
+        CPU::ShiftBitsRight(hl);
+        CPU::WriteByte(HL, hl);
         break;
     }
     /* srl r8 */
     case 0x38: case 0x39: case 0x3A: case 0x3B: case 0x3C: case 0x3D: case 0x3F: // srl r8
     {
-        Cpu::ShiftBitsRight(*reg8_group[opcode - 0x38], true);
+        CPU::ShiftBitsRight(*reg8_group[opcode - 0x38], true);
         break;
     }
     /* srl (HL) */
     case 0x3E:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
-        Cpu::ShiftBitsRight(hl, true);
-        Cpu::WriteByte(HL, hl);
+        uint8_t hl = CPU::ReadByte(HL);
+        CPU::ShiftBitsRight(hl, true);
+        CPU::WriteByte(HL, hl);
         break;
     }
     /* bit n,r8 */
@@ -1338,18 +1341,18 @@ void Cpu::HandlePrefixCB()
     case 0x70: case 0x71: case 0x72: case 0x73: case 0x74: case 0x75: case 0x77: // bit 6,r8
     case 0x78: case 0x79: case 0x7A: case 0x7B: case 0x7C: case 0x7D: case 0x7F: // bit 7,r8
     {
-        Cpu::ModifyFlag(FLAG_Z, !TEST_BIT(*reg8_group[opcode & 7], opcode >> 3 & 7));
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 1);
+        CPU::ModifyFlag(FLAG_Z, !TEST_BIT(*reg8_group[opcode & 7], opcode >> 3 & 7));
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 1);
         break;
     }
     /* bit n,(HL) */
     case 0x46: case 0x4E: case 0x56: case 0x5E: case 0x66: case 0x6E: case 0x76: case 0x7E:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
-        Cpu::ModifyFlag(FLAG_Z, !TEST_BIT(hl, (opcode - 0x46) >> 3));
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 1);
+        uint8_t hl = CPU::ReadByte(HL);
+        CPU::ModifyFlag(FLAG_Z, !TEST_BIT(hl, (opcode - 0x46) >> 3));
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 1);
         break;
     }
     /* set n,r8 */
@@ -1371,9 +1374,9 @@ void Cpu::HandlePrefixCB()
     /* set n,(HL) */
     case 0xC6: case 0xCE: case 0xD6: case 0xDE: case 0xE6: case 0xEE: case 0xF6: case 0xFE:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
+        uint8_t hl = CPU::ReadByte(HL);
         SET_BIT(hl, (opcode - 0xC6) >> 3);
-        Cpu::WriteByte(HL, hl);
+        CPU::WriteByte(HL, hl);
         break;
     }
     /* res n,r8 */
@@ -1395,16 +1398,16 @@ void Cpu::HandlePrefixCB()
     /* res n,(HL) */
     case 0x86: case 0x8E: case 0x96: case 0x9E: case 0xA6: case 0xAE: case 0xB6: case 0xBE:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
+        uint8_t hl = CPU::ReadByte(HL);
         RES_BIT(hl, (opcode - 0x86) >> 3);
-        Cpu::WriteByte(HL, hl);
+        CPU::WriteByte(HL, hl);
         break;
     }
     default:
     {
 #ifndef GUI_MODE
         std::cerr << "Opcode: " << int_to_hex(opcode) << std::endl;
-        Cpu::Debug_PrintStatus();
+        CPU::Debug_PrintStatus();
 #else
         LOG_IF_F(ERROR, true, "Unknown opcode: %02X", opcode);
 #endif
@@ -1414,17 +1417,17 @@ void Cpu::HandlePrefixCB()
     }
 }
 
-Cpu::Cpu(Emulator *emu)
+CPU::CPU(Emulator *emu)
 {
     m_Emulator = emu;
 }
 
-Cpu::~Cpu()
+CPU::~CPU()
 {
     
 }
 
-void Cpu::Init()
+void CPU::Init()
 {
     ei_delay_cnt = 0;
     PC = 0x0;
@@ -1432,7 +1435,7 @@ void Cpu::Init()
     haltBug = false;
 }
 
-void Cpu::Reset()
+void CPU::Reset()
 {
     reg8[0] = 19;
     reg8[1] = 0;
@@ -1450,7 +1453,7 @@ void Cpu::Reset()
     haltBug = false;
 }
 
-void Cpu::Step()
+void CPU::Step()
 {
     // https://gbdev.io/pandocs/CPU_Instruction_Set.html
     // https://izik1.github.io/gbops/
@@ -1464,7 +1467,7 @@ void Cpu::Step()
     m_Emulator->m_IntManager->InterruptRoutine();
 
 #ifndef GUI_MODE
-    Cpu::Debug_LogState();
+    CPU::Debug_LogState();
 #endif
 
     if (bHalted)
@@ -1486,7 +1489,7 @@ void Cpu::Step()
         }
     }
 
-    switch (opcode = Cpu::NextByte())
+    switch (opcode = CPU::NextByte())
     {
     /**
      *
@@ -1508,77 +1511,77 @@ void Cpu::Step()
     /* ld r8,n ; 8c */
     case 0x06: case 0x0E: case 0x16: case 0x1E: case 0x26: case 0x2E: case 0x3E: // ld r8,n
     {
-        *reg8_group[(opcode - 6) >> 3] = Cpu::NextByte();
+        *reg8_group[(opcode - 6) >> 3] = CPU::NextByte();
         break;
     }
     /* ld r8,(HL) ; 8c */
     case 0x46: case 0x4E: case 0x56: case 0x5E: case 0x66: case 0x6E: case 0x7E: // ld r8,(HL)
     {
-        *reg8_group[(opcode - 70) >> 3] = Cpu::ReadByte(HL);
+        *reg8_group[(opcode - 70) >> 3] = CPU::ReadByte(HL);
         break;
     }
     /* ld (HL),r8 ; 8c */
     case 0x70: case 0x71: case 0x72: case 0x73: case 0x74: case 0x75: case 0x77: // ld (HL),r8
     {
-        Cpu::WriteByte(HL, *reg8_group[opcode - 0x70]);
+        CPU::WriteByte(HL, *reg8_group[opcode - 0x70]);
         break;
     }
     /* ld (HL),n ; 12c */
     case 0x36:
     {
-        Cpu::WriteByte(HL, Cpu::NextByte());
+        CPU::WriteByte(HL, CPU::NextByte());
         break;
     }
     /* ld A,(r16-g2) ; 8c */
     case 0x0A: case 0x1A: case 0x2A: case 0x3A: // ld A,(r16-g2)
     {
         int idx = (opcode - 0x0A) >> 4;
-        A = Cpu::ReadByte(*reg16_group2[idx]);
+        A = CPU::ReadByte(*reg16_group2[idx]);
         HL += HL_add[idx];
         break;
     }
     /* ld A,(nn) ; 16c */
     case 0xFA:
     {
-        A = Cpu::ReadByte(Cpu::NextWord());
+        A = CPU::ReadByte(CPU::NextWord());
         break;
     }
     /* ld (r16-g2),A ; 8c */
     case 0x02: case 0x12: case 0x22: case 0x32: // ld (r16-g2),A
     {
         int idx = (opcode - 0x02) >> 4;
-        Cpu::WriteByte(*reg16_group2[idx], A);
+        CPU::WriteByte(*reg16_group2[idx], A);
         HL += HL_add[idx];
         break;
     }
     /* ld (nn),A ; 16c */
     case 0xEA:
     {
-        Cpu::WriteByte(Cpu::NextWord(), A);
+        CPU::WriteByte(CPU::NextWord(), A);
         break;
     }
     /* ld A,(FF00+n) ; 12c */
     case 0xF0:
     {
-        A = Cpu::ReadByte(0xFF00 + Cpu::NextByte());
+        A = CPU::ReadByte(0xFF00 + CPU::NextByte());
         break;
     }
     /* ld (FF00+n),A ; 12c */
     case 0xE0:
     {
-        Cpu::WriteByte(0xFF00 + Cpu::NextByte(), A);
+        CPU::WriteByte(0xFF00 + CPU::NextByte(), A);
         break;
     }
     /* ld A,(FF00+C) ; 8c */
     case 0xF2:
     {
-        A = Cpu::ReadByte(0xFF00 + reg8[0]);
+        A = CPU::ReadByte(0xFF00 + reg8[0]);
         break;
     }
     /* ld (FF00+C),A ; 8c */
     case 0xE2:
     {
-        Cpu::WriteByte(0xFF00 + reg8[0], A);
+        CPU::WriteByte(0xFF00 + reg8[0], A);
         break;
     }
     /**
@@ -1589,13 +1592,13 @@ void Cpu::Step()
     /* ld r16-g1,nn ; 12c */
     case 0x01: case 0x11: case 0x21: case 0x31: // ld r16-g1,nn
     {
-        *reg16_group1[(opcode - 0x01) >> 4] = Cpu::NextWord();
+        *reg16_group1[(opcode - 0x01) >> 4] = CPU::NextWord();
         break;
     }
     /* ld (nn),SP ; 20c */
     case 0x08:
     {
-        Cpu::WriteWord(Cpu::NextWord(), SP);
+        CPU::WriteWord(CPU::NextWord(), SP);
         break;
     }
     /* ld SP,HL ; 8c */
@@ -1608,14 +1611,14 @@ void Cpu::Step()
     /* push r16-g3 ; 16c */
     case 0xC5: case 0xD5: case 0xE5: case 0xF5: // push r16-g3
     {
-        Cpu::Push(*reg16_group3[(opcode - 0xC5) >> 4]);
+        CPU::Push(*reg16_group3[(opcode - 0xC5) >> 4]);
         m_Emulator->Tick(); // internal
         break;
     }
     /* pop r16-g3 ; 12c */
     case 0xC1: case 0xD1: case 0xE1: case 0xF1: // pop r16-g3
     {
-        *reg16_group3[(opcode - 0xC1) >> 4] = Cpu::Pop();
+        *reg16_group3[(opcode - 0xC1) >> 4] = CPU::Pop();
         if (opcode == 0xF1) F &= 0xF0; // the lower nibble of the flag register should stay untouched after popping
         break;
     }
@@ -1629,36 +1632,36 @@ void Cpu::Step()
     case 0x88: case 0x89: case 0x8A: case 0x8B: case 0x8C: case 0x8D: case 0x8F: // adc A,r8
     {
         uint8_t r8 = *reg8_group[opcode - (opcode <= 0x87 ? 0x80 : 0x88)];
-        int cy = opcode > 0x87 ? Cpu::IsFlagSet(FLAG_C) : 0;
-        Cpu::ModifyFlag(FLAG_H, HC8(A, r8, cy));
-        Cpu::ModifyFlag(FLAG_C, CARRY8(A, r8, cy));
+        int cy = opcode > 0x87 ? CPU::IsFlagSet(FLAG_C) : 0;
+        CPU::ModifyFlag(FLAG_H, HC8(A, r8, cy));
+        CPU::ModifyFlag(FLAG_C, CARRY8(A, r8, cy));
         A += r8 + cy;
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
         break;
     }
     /* (add / adc) A,n ; 8c */
     case 0xC6: case 0xCE:
     {
-        uint8_t n = Cpu::NextByte();
-        int cy = opcode == 0xCE ? Cpu::IsFlagSet(FLAG_C) : 0;
-        Cpu::ModifyFlag(FLAG_H, HC8(A, n, cy));
-        Cpu::ModifyFlag(FLAG_C, CARRY8(A, n, cy));
+        uint8_t n = CPU::NextByte();
+        int cy = opcode == 0xCE ? CPU::IsFlagSet(FLAG_C) : 0;
+        CPU::ModifyFlag(FLAG_H, HC8(A, n, cy));
+        CPU::ModifyFlag(FLAG_C, CARRY8(A, n, cy));
         A += n + cy;
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
         break;
     }
     /* (add / adc) A,(HL) ; 8c */
     case 0x86: case 0x8E:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
-        int cy = opcode == 0x8E ? Cpu::IsFlagSet(FLAG_C) : 0;
-        Cpu::ModifyFlag(FLAG_H, HC8(A, hl, cy));
-        Cpu::ModifyFlag(FLAG_C, CARRY8(A, hl, cy));
+        uint8_t hl = CPU::ReadByte(HL);
+        int cy = opcode == 0x8E ? CPU::IsFlagSet(FLAG_C) : 0;
+        CPU::ModifyFlag(FLAG_H, HC8(A, hl, cy));
+        CPU::ModifyFlag(FLAG_C, CARRY8(A, hl, cy));
         A += hl + cy;
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
         break;
     }
     /* (sub / sbc) A,r8 ; 4c */
@@ -1666,156 +1669,156 @@ void Cpu::Step()
     case 0x98: case 0x99: case 0x9A: case 0x9B: case 0x9C: case 0x9D: case 0x9F: // sbc A,r8
     {
         uint8_t r8 = *reg8_group[opcode - (opcode <= 0x97 ? 0x90 : 0x98)];
-        int cy = opcode > 0x97 ? Cpu::IsFlagSet(FLAG_C) : 0;
-        Cpu::ModifyFlag(FLAG_H, HC8_SUB(A, r8, cy));
-        Cpu::ModifyFlag(FLAG_C, CARRY8_SUB(A, r8, cy));
+        int cy = opcode > 0x97 ? CPU::IsFlagSet(FLAG_C) : 0;
+        CPU::ModifyFlag(FLAG_H, HC8_SUB(A, r8, cy));
+        CPU::ModifyFlag(FLAG_C, CARRY8_SUB(A, r8, cy));
         A -= r8 + cy;
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 1);
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 1);
         break;
     }
     /* (sub / sbc) A,n ; 8c */
     case 0xD6: case 0xDE:
     {
-        uint8_t n = Cpu::NextByte();
-        int cy = opcode == 0xDE ? Cpu::IsFlagSet(FLAG_C) : 0;
-        Cpu::ModifyFlag(FLAG_H, HC8_SUB(A, n, cy));
-        Cpu::ModifyFlag(FLAG_C, CARRY8_SUB(A, n, cy));
+        uint8_t n = CPU::NextByte();
+        int cy = opcode == 0xDE ? CPU::IsFlagSet(FLAG_C) : 0;
+        CPU::ModifyFlag(FLAG_H, HC8_SUB(A, n, cy));
+        CPU::ModifyFlag(FLAG_C, CARRY8_SUB(A, n, cy));
         A -= n + cy;
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 1);
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 1);
         break;
     }
     /* (sub / sbc) A,(HL) ; 8c */
     case 0x96: case 0x9E:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
-        int cy = opcode == 0x9E ? Cpu::IsFlagSet(FLAG_C) : 0;
-        Cpu::ModifyFlag(FLAG_H, HC8_SUB(A, hl, cy));
-        Cpu::ModifyFlag(FLAG_C, CARRY8_SUB(A, hl, cy));
+        uint8_t hl = CPU::ReadByte(HL);
+        int cy = opcode == 0x9E ? CPU::IsFlagSet(FLAG_C) : 0;
+        CPU::ModifyFlag(FLAG_H, HC8_SUB(A, hl, cy));
+        CPU::ModifyFlag(FLAG_C, CARRY8_SUB(A, hl, cy));
         A -= hl + cy;
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 1);
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 1);
         break;
     }
     /* and r8 ; 4c */
     case 0xA0: case 0xA1: case 0xA2: case 0xA3: case 0xA4: case 0xA5: case 0xA7: // and r8
     {
         A &= *reg8_group[opcode - 0xA0];
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 1);
-        Cpu::ModifyFlag(FLAG_C, 0);
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 1);
+        CPU::ModifyFlag(FLAG_C, 0);
         break;
     }
     /* and n ; 8c */
     case 0xE6:
     {
-        A &= Cpu::NextByte();
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 1);
-        Cpu::ModifyFlag(FLAG_C, 0);
+        A &= CPU::NextByte();
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 1);
+        CPU::ModifyFlag(FLAG_C, 0);
         break;
     }
     /* and (HL) ; 8c */
     case 0xA6:
     {
-        A &= Cpu::ReadByte(HL);
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 1);
-        Cpu::ModifyFlag(FLAG_C, 0);
+        A &= CPU::ReadByte(HL);
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 1);
+        CPU::ModifyFlag(FLAG_C, 0);
         break;
     }
     /* xor r8 ; 4c */
     case 0xA8: case 0xA9: case 0xAA: case 0xAB: case 0xAC: case 0xAD: case 0xAF: // xor r8
     {
         A ^= *reg8_group[opcode - 0xA8];
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 0);
-        Cpu::ModifyFlag(FLAG_C, 0);
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 0);
+        CPU::ModifyFlag(FLAG_C, 0);
         break;
     }
     /* xor n ; 8c */
     case 0xEE:
     {
-        A ^= Cpu::NextByte();
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 0);
-        Cpu::ModifyFlag(FLAG_C, 0);
+        A ^= CPU::NextByte();
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 0);
+        CPU::ModifyFlag(FLAG_C, 0);
         break;
     }
     /* xor (HL) ; 8c */
     case 0xAE:
     {
-        A ^= Cpu::ReadByte(HL);
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 0);
-        Cpu::ModifyFlag(FLAG_C, 0);
+        A ^= CPU::ReadByte(HL);
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 0);
+        CPU::ModifyFlag(FLAG_C, 0);
         break;
     }
     /* or r8 ; 4c */
     case 0xB0: case 0xB1: case 0xB2: case 0xB3: case 0xB4: case 0xB5: case 0xB7: // or r8
     {
         A |= *reg8_group[opcode - 0xB0];
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 0);
-        Cpu::ModifyFlag(FLAG_C, 0);
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 0);
+        CPU::ModifyFlag(FLAG_C, 0);
         break;
     }
     /* or n ; 8c */
     case 0xF6:
     {
-        A |= Cpu::NextByte();
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 0);
-        Cpu::ModifyFlag(FLAG_C, 0);
+        A |= CPU::NextByte();
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 0);
+        CPU::ModifyFlag(FLAG_C, 0);
         break;
     }
     /* or (HL) ; 8c */
     case 0xB6:
     {
-        A |= Cpu::ReadByte(HL);
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 0);
-        Cpu::ModifyFlag(FLAG_C, 0);
+        A |= CPU::ReadByte(HL);
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 0);
+        CPU::ModifyFlag(FLAG_C, 0);
         break;
     }
     /* cp r8 ; 4c */
     case 0xB8: case 0xB9: case 0xBA: case 0xBB: case 0xBC: case 0xBD: case 0xBF: // cp r8
     {
         uint8_t r8 = *reg8_group[opcode - 0xB8];
-        Cpu::ModifyFlag(FLAG_H, HC8_SUB(A, r8, 0));
-        Cpu::ModifyFlag(FLAG_C, CARRY8_SUB(A, r8, 0));
-        Cpu::ModifyFlag(FLAG_Z, A == r8);
-        Cpu::ModifyFlag(FLAG_N, 1);
+        CPU::ModifyFlag(FLAG_H, HC8_SUB(A, r8, 0));
+        CPU::ModifyFlag(FLAG_C, CARRY8_SUB(A, r8, 0));
+        CPU::ModifyFlag(FLAG_Z, A == r8);
+        CPU::ModifyFlag(FLAG_N, 1);
         break;
     }
     /* cp n ; 8c */
     case 0xFE:
     {
-        uint8_t n = Cpu::NextByte();
-        Cpu::ModifyFlag(FLAG_H, HC8_SUB(A, n, 0));
-        Cpu::ModifyFlag(FLAG_C, CARRY8_SUB(A, n, 0));
-        Cpu::ModifyFlag(FLAG_Z, A == n);
-        Cpu::ModifyFlag(FLAG_N, 1);
+        uint8_t n = CPU::NextByte();
+        CPU::ModifyFlag(FLAG_H, HC8_SUB(A, n, 0));
+        CPU::ModifyFlag(FLAG_C, CARRY8_SUB(A, n, 0));
+        CPU::ModifyFlag(FLAG_Z, A == n);
+        CPU::ModifyFlag(FLAG_N, 1);
         break;
     }
     /* cp (HL) ; 8c */
     case 0xBE:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
-        Cpu::ModifyFlag(FLAG_H, HC8_SUB(A, hl, 0));
-        Cpu::ModifyFlag(FLAG_C, CARRY8_SUB(A, hl, 0));
-        Cpu::ModifyFlag(FLAG_Z, A == hl);
-        Cpu::ModifyFlag(FLAG_N, 1);
+        uint8_t hl = CPU::ReadByte(HL);
+        CPU::ModifyFlag(FLAG_H, HC8_SUB(A, hl, 0));
+        CPU::ModifyFlag(FLAG_C, CARRY8_SUB(A, hl, 0));
+        CPU::ModifyFlag(FLAG_Z, A == hl);
+        CPU::ModifyFlag(FLAG_N, 1);
         break;
     }
     /* inc r8 ; 4c */
@@ -1823,22 +1826,22 @@ void Cpu::Step()
     {
         int idx = (opcode - 0x04) >> 3;
         uint8_t val = *reg8_group[idx];
-        Cpu::ModifyFlag(FLAG_H, HC8(val, 1, 0));
+        CPU::ModifyFlag(FLAG_H, HC8(val, 1, 0));
         val += 1;
-        Cpu::ModifyFlag(FLAG_Z, val == 0);
+        CPU::ModifyFlag(FLAG_Z, val == 0);
         *reg8_group[idx] = val;
-        Cpu::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_N, 0);
         break;
     }
     /* inc (HL) ; 12c */
     case 0x34:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
-        Cpu::ModifyFlag(FLAG_H, HC8(hl, 1, 0));
+        uint8_t hl = CPU::ReadByte(HL);
+        CPU::ModifyFlag(FLAG_H, HC8(hl, 1, 0));
         hl += 1;
-        Cpu::ModifyFlag(FLAG_Z, hl == 0);
-        Cpu::WriteByte(HL, hl);
-        Cpu::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_Z, hl == 0);
+        CPU::WriteByte(HL, hl);
+        CPU::ModifyFlag(FLAG_N, 0);
         break;
     }
     /* dec r8 ; 4c */
@@ -1846,37 +1849,37 @@ void Cpu::Step()
     {
         int idx = (opcode - 0x05) >> 3;
         uint8_t val = *reg8_group[idx];
-        Cpu::ModifyFlag(FLAG_H, HC8_SUB(val, 1, 0));
+        CPU::ModifyFlag(FLAG_H, HC8_SUB(val, 1, 0));
         val -= 1;
-        Cpu::ModifyFlag(FLAG_Z, val == 0);
+        CPU::ModifyFlag(FLAG_Z, val == 0);
         *reg8_group[idx] = val;
-        Cpu::ModifyFlag(FLAG_N, 1);
+        CPU::ModifyFlag(FLAG_N, 1);
         break;
     }
     /* dec (HL) ; 12c */
     case 0x35:
     {
-        uint8_t hl = Cpu::ReadByte(HL);
-        Cpu::ModifyFlag(FLAG_H, HC8_SUB(hl, 1, 0));
+        uint8_t hl = CPU::ReadByte(HL);
+        CPU::ModifyFlag(FLAG_H, HC8_SUB(hl, 1, 0));
         hl -= 1;
-        Cpu::ModifyFlag(FLAG_Z, hl == 0);
-        Cpu::WriteByte(HL, hl);
-        Cpu::ModifyFlag(FLAG_N, 1);
+        CPU::ModifyFlag(FLAG_Z, hl == 0);
+        CPU::WriteByte(HL, hl);
+        CPU::ModifyFlag(FLAG_N, 1);
         break;
     }
     /* daa ; 4c */
     case 0x27: // You should try implementing yourself without copying other people's code...
     {
-        if (!Cpu::IsFlagSet(FLAG_N))
+        if (!CPU::IsFlagSet(FLAG_N))
         {
             // after an addition, adjust if (half-)carry occurred or if result is out of bounds
-            if (Cpu::IsFlagSet(FLAG_C) || A > 0x99)
+            if (CPU::IsFlagSet(FLAG_C) || A > 0x99)
             {
                 A += 0x60;
-                Cpu::ModifyFlag(FLAG_C, 1);
+                CPU::ModifyFlag(FLAG_C, 1);
             }
 
-            if (Cpu::IsFlagSet(FLAG_H) || (A & 0xF) > 0x9)
+            if (CPU::IsFlagSet(FLAG_H) || (A & 0xF) > 0x9)
             {
                 A += 0x6;
             }
@@ -1884,20 +1887,20 @@ void Cpu::Step()
         else
         {
             // after a subtraction, only adjust if (half-)carry occurred
-            if (Cpu::IsFlagSet(FLAG_C))
+            if (CPU::IsFlagSet(FLAG_C))
             {
                 A -= 0x60;
-                Cpu::ModifyFlag(FLAG_C, 1);
+                CPU::ModifyFlag(FLAG_C, 1);
             }
 
-            if (Cpu::IsFlagSet(FLAG_H))
+            if (CPU::IsFlagSet(FLAG_H))
             {
                 A -= 0x6;
             }
         }
 
-        Cpu::ModifyFlag(FLAG_Z, A == 0);
-        Cpu::ModifyFlag(FLAG_H, 0);
+        CPU::ModifyFlag(FLAG_Z, A == 0);
+        CPU::ModifyFlag(FLAG_H, 0);
 
         break;
     }
@@ -1905,8 +1908,8 @@ void Cpu::Step()
     case 0x2F:
     {
         A ^= 0xFF;
-        Cpu::ModifyFlag(FLAG_N, 1);
-        Cpu::ModifyFlag(FLAG_H, 1);
+        CPU::ModifyFlag(FLAG_N, 1);
+        CPU::ModifyFlag(FLAG_H, 1);
         break;
     }
     /**
@@ -1918,10 +1921,10 @@ void Cpu::Step()
     case 0x09: case 0x19: case 0x29: case 0x39: // add HL,r16-g1
     {
         uint16_t val = *reg16_group1[(opcode - 0x09) >> 4];
-        Cpu::ModifyFlag(FLAG_H, HC16(HL, val));
-        Cpu::ModifyFlag(FLAG_C, CARRY16(HL, val));
+        CPU::ModifyFlag(FLAG_H, HC16(HL, val));
+        CPU::ModifyFlag(FLAG_C, CARRY16(HL, val));
         HL += val;
-        Cpu::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_N, 0);
         m_Emulator->Tick(); // internal
         break;
     }
@@ -1942,12 +1945,12 @@ void Cpu::Step()
     /* add SP,dd ; 16c */
     case 0xE8:
     {
-        int8_t dd = static_cast<int8_t>(Cpu::NextByte());
-        Cpu::ModifyFlag(FLAG_H, HC8(SP, dd, 0));
-        Cpu::ModifyFlag(FLAG_C, CARRY8(SP, dd, 0));
+        int8_t dd = static_cast<int8_t>(CPU::NextByte());
+        CPU::ModifyFlag(FLAG_H, HC8(SP, dd, 0));
+        CPU::ModifyFlag(FLAG_C, CARRY8(SP, dd, 0));
         SP += dd;
-        Cpu::ModifyFlag(FLAG_Z, 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_Z, 0);
+        CPU::ModifyFlag(FLAG_N, 0);
         m_Emulator->Tick(); // internal
         m_Emulator->Tick(); // write
         break;
@@ -1955,12 +1958,12 @@ void Cpu::Step()
     /* ld HL,SP+dd ; 12c */
     case 0xF8:
     {
-        int8_t dd = static_cast<int8_t>(Cpu::NextByte());
-        Cpu::ModifyFlag(FLAG_H, HC8(SP, dd, 0));
-        Cpu::ModifyFlag(FLAG_C, CARRY8(SP, dd, 0));
+        int8_t dd = static_cast<int8_t>(CPU::NextByte());
+        CPU::ModifyFlag(FLAG_H, HC8(SP, dd, 0));
+        CPU::ModifyFlag(FLAG_C, CARRY8(SP, dd, 0));
         HL = SP + dd;
-        Cpu::ModifyFlag(FLAG_Z, 0);
-        Cpu::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_Z, 0);
+        CPU::ModifyFlag(FLAG_N, 0);
         m_Emulator->Tick(); // internal
         break;
     }
@@ -1972,18 +1975,18 @@ void Cpu::Step()
     /* rl(c)a ; 4c */
     case 0x07: case 0x17:
     {
-        Cpu::RotateBitsLeft(A, opcode == 0x07, true);
+        CPU::RotateBitsLeft(A, opcode == 0x07, true);
         break;
     }
     /* rr(c)a ; 4c */
     case 0x0F: case 0x1F:
     {
-        Cpu::RotateBitsRight(A, opcode == 0x0F, true);
+        CPU::RotateBitsRight(A, opcode == 0x0F, true);
         break;
     }
     case 0xCB:
     {
-        Cpu::HandlePrefixCB();
+        CPU::HandlePrefixCB();
         break;
     }
     /**
@@ -1994,17 +1997,17 @@ void Cpu::Step()
     /* ccf ; 4c */
     case 0x3F:
     {
-        Cpu::ModifyFlag(FLAG_C, !Cpu::IsFlagSet(FLAG_C));
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 0);
+        CPU::ModifyFlag(FLAG_C, !CPU::IsFlagSet(FLAG_C));
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 0);
         break;
     }
     /* scf ; 4c */
     case 0x37:
     {
-        Cpu::ModifyFlag(FLAG_C, 1);
-        Cpu::ModifyFlag(FLAG_N, 0);
-        Cpu::ModifyFlag(FLAG_H, 0);
+        CPU::ModifyFlag(FLAG_C, 1);
+        CPU::ModifyFlag(FLAG_N, 0);
+        CPU::ModifyFlag(FLAG_H, 0);
         break;
     }
     /* nop ; 4c */
@@ -2053,7 +2056,7 @@ void Cpu::Step()
     /* jp nn ; 16c */
     case 0xC3:
     {
-        PC = Cpu::NextWord();
+        PC = CPU::NextWord();
         m_Emulator->Tick(); // internal
         break;
     }
@@ -2066,8 +2069,8 @@ void Cpu::Step()
     /* jp f,nn ; 16c/12c */
     case 0xC2: case 0xCA: case 0xD2: case 0xDA: // jp f,nn
     {
-        uint16_t nn = Cpu::NextWord();
-        if (Cpu::Condition((opcode - 0xC2) >> 3))
+        uint16_t nn = CPU::NextWord();
+        if (CPU::Condition((opcode - 0xC2) >> 3))
         {
             PC = nn;
         }
@@ -2076,7 +2079,7 @@ void Cpu::Step()
     /* jr PC+dd ; 12c */
     case 0x18:
     {
-        int8_t dd = static_cast<int8_t>(Cpu::NextByte());
+        int8_t dd = static_cast<int8_t>(CPU::NextByte());
         PC += dd;
         m_Emulator->Tick(); // internal
         break;
@@ -2084,8 +2087,8 @@ void Cpu::Step()
     /* jr f,PC+dd ; 12c/8c */
     case 0x20: case 0x28: case 0x30: case 0x38: // jr f,PC+dd
     {
-        int8_t dd = static_cast<int8_t>(Cpu::NextByte());
-        if (Cpu::Condition((opcode - 0x20) >> 3))
+        int8_t dd = static_cast<int8_t>(CPU::NextByte());
+        if (CPU::Condition((opcode - 0x20) >> 3))
         {
             PC += dd;
         }
@@ -2094,33 +2097,33 @@ void Cpu::Step()
     /* call nn ; 24c */
     case 0xCD:
     {
-        Cpu::Call(Cpu::NextWord());
+        CPU::Call(CPU::NextWord());
         m_Emulator->Tick(); // internal
         break;
     }
     /* call f,nn ; 24c/12c */
     case 0xC4: case 0xCC: case 0xD4: case 0xDC: // call f,nn
     {
-        uint16_t nn = Cpu::NextWord();
-        if (Cpu::Condition((opcode - 0xC4) >> 3))
+        uint16_t nn = CPU::NextWord();
+        if (CPU::Condition((opcode - 0xC4) >> 3))
         {
-            Cpu::Call(nn);
+            CPU::Call(nn);
         }
         break;
     }
     /* ret ; 16c */
     case 0xC9:
     {
-        PC = Cpu::Pop();
+        PC = CPU::Pop();
         m_Emulator->Tick(); // internal
         break;
     }
     /* ret f ; 20c/8c */
     case 0xC0: case 0xC8: case 0xD0: case 0xD8: // ret f
     {
-        if (Cpu::Condition((opcode - 0xC0) >> 3))
+        if (CPU::Condition((opcode - 0xC0) >> 3))
         {
-            PC = Cpu::Pop();
+            PC = CPU::Pop();
             m_Emulator->Tick(); // set
         }
         else
@@ -2132,7 +2135,7 @@ void Cpu::Step()
     /* reti ; 16c */
     case 0xD9:
     {
-        PC = Cpu::Pop(); /* RET */
+        PC = CPU::Pop(); /* RET */
         m_Emulator->Tick(); // internal
         m_Emulator->m_IntManager->EnableIME(); /* EI */
         break;
@@ -2140,7 +2143,7 @@ void Cpu::Step()
     /* rst n ; 16c */
     case 0xC7: case 0xCF: case 0xD7: case 0xDF: case 0xE7: case 0xEF: case 0xF7: case 0xFF:
     {
-        Cpu::Call(RST_ADDR[(opcode - 0xC7) >> 3]);
+        CPU::Call(RST_ADDR[(opcode - 0xC7) >> 3]);
         m_Emulator->Tick(); // internal
         break;
     }
@@ -2148,7 +2151,7 @@ void Cpu::Step()
     {
 #ifndef GUI_MODE
         std::cerr << "Opcode: " << int_to_hex(opcode) << std::endl;
-        Cpu::Debug_PrintStatus();
+        CPU::Debug_PrintStatus();
 #else
         LOG_IF_F(ERROR, true, "Unknown opcode: %02X", opcode);
 #endif
@@ -2165,30 +2168,30 @@ void Cpu::Step()
     }
 }
 
-void Cpu::HandleInterrupt(int i)
+void CPU::HandleInterrupt(int i)
 {
     // https://gbdev.io/pandocs/Interrupts.html#interrupt-handling
     // 5 cycles (+1 if halt)
-    RES_BIT(m_Emulator->m_MemControl->IF, i);
+    RES_BIT(m_Emulator->m_IntManager->IF, i);
     m_Emulator->m_IntManager->DisableIME();
     m_Emulator->Tick();
     m_Emulator->Tick();
-    Cpu::Call(int_vectors[i]);
+    CPU::Call(int_vectors[i]);
     m_Emulator->Tick();
     if (bHalted) m_Emulator->Tick(); // refer to 4.9 in https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
 }
 
-bool Cpu::isHalted()
+bool CPU::isHalted()
 {
     return bHalted;
 }
 
-void Cpu::Resume()
+void CPU::Resume()
 {
     bHalted = false;
 }
 
-void Cpu::Debug_PrintStatus()
+void CPU::Debug_PrintStatus()
 {
     std::cout << "*CPU STATUS*" << std::endl;
     std::cout << "8-bit registers:" << std::endl;
@@ -2201,10 +2204,10 @@ void Cpu::Debug_PrintStatus()
     std::cout << "L(4)=" << int_to_hex(+reg8[4], 2) << std::endl;
     std::cout << std::endl;
     std::cout << "Flags:" << std::endl;
-    std::cout << "Z(7)=" << Cpu::IsFlagSet(FLAG_Z) << " "
-              << "N(6)=" << Cpu::IsFlagSet(FLAG_N) << " "
-              << "H(5)=" << Cpu::IsFlagSet(FLAG_H) << " "
-              << "C(4)=" << Cpu::IsFlagSet(FLAG_C) << std::endl;
+    std::cout << "Z(7)=" << CPU::IsFlagSet(FLAG_Z) << " "
+              << "N(6)=" << CPU::IsFlagSet(FLAG_N) << " "
+              << "H(5)=" << CPU::IsFlagSet(FLAG_H) << " "
+              << "C(4)=" << CPU::IsFlagSet(FLAG_C) << std::endl;
     std::cout << std::endl;
     std::cout << "16-bit registers:" << std::endl;
     std::cout << "AF(3)=" << int_to_hex(reg16[3]) << std::endl;
@@ -2216,7 +2219,7 @@ void Cpu::Debug_PrintStatus()
     std::cout << std::endl;
 }
 
-void Cpu::Debug_PrintCurrentInstruction()
+void CPU::Debug_PrintCurrentInstruction()
 {
     uint16_t addr = PC;
     uint8_t temp = m_Emulator->m_MemControl->ReadByte(addr++);
@@ -2247,7 +2250,7 @@ void Cpu::Debug_PrintCurrentInstruction()
     printf("\n");
 }
 
-void Cpu::Debug_EditRegister(int reg, int val, bool is8Bit)
+void CPU::Debug_EditRegister(int reg, int val, bool is8Bit)
 {
     if (is8Bit)
     {
@@ -2269,13 +2272,13 @@ void Cpu::Debug_EditRegister(int reg, int val, bool is8Bit)
     }
 }
 
-void Cpu::Debug_EditFlag(int flag, int val)
+void CPU::Debug_EditFlag(int flag, int val)
 {
-    Cpu::ModifyFlag(flag, val);
+    CPU::ModifyFlag(flag, val);
     std::cout << "flag " << flag_str[flag - 4] << " is now set to " << val << std::endl;
 }
 
-void Cpu::Debug_LogState()
+void CPU::Debug_LogState()
 {
     fout << "A: " << int_to_hex(+A, 2, false) << " "
          << "F: " << int_to_hex(+F, 2, false) << " "
@@ -2296,6 +2299,8 @@ void Cpu::Debug_LogState()
 }
 
 InterruptManager::InterruptManager(Emulator *emu)
+  : IF(emu->m_MemControl->m_IO[0x0F]),
+    IE(emu->m_MemControl->IE)
 {
     m_Emulator = emu;
 }
@@ -2309,16 +2314,16 @@ void InterruptManager::Init()
 {
     m_IME = false;
     haltMode = -1;
-    m_Emulator->m_MemControl->IF = 0x0;
-    m_Emulator->m_MemControl->IE = 0x0;
+    IF = 0x0;
+    IE = 0x0;
 }
 
 void InterruptManager::Reset()
 {
     m_IME = false;
     haltMode = -1;
-    m_Emulator->m_MemControl->IF = 0xE0;
-    m_Emulator->m_MemControl->IE = 0;
+    IF = 0xE0;
+    IE = 0;
 }
 
 bool InterruptManager::GetIME()
@@ -2343,12 +2348,12 @@ bool InterruptManager::SetHaltMode()
         haltMode = HALT_MODE0;
         return true;
     }
-    else if (!m_IME && ((m_Emulator->m_MemControl->IE & m_Emulator->m_MemControl->IF) == 0))
+    else if (!m_IME && ((IE & IF) == 0))
     {
         haltMode = HALT_MODE1;
         return true;
     }
-    else if (!m_IME && ((m_Emulator->m_MemControl->IE & m_Emulator->m_MemControl->IF) != 0))
+    else if (!m_IME && ((IE & IF) != 0))
     {
         haltMode = HALT_MODE2;
         return false;
@@ -2370,26 +2375,26 @@ void InterruptManager::ResetHaltMode()
 
 void InterruptManager::RequestInterrupt(int i)
 {
-    SET_BIT(m_Emulator->m_MemControl->IF, i);
+    SET_BIT(IF, i);
 }
 
 void InterruptManager::InterruptRoutine()
 {
     // once you enter halt mode, the only thing you can do to get out of it is to receive an interrupt
-    if (haltMode != HALT_MODE2 && ((m_Emulator->m_MemControl->IE & m_Emulator->m_MemControl->IF) != 0))
+    if (haltMode != HALT_MODE2 && ((IE & IF) != 0))
     {
-        if (m_Emulator->m_Cpu->isHalted())
+        if (m_Emulator->m_CPU->isHalted())
         {
-            m_Emulator->m_Cpu->Resume();
+            m_Emulator->m_CPU->Resume();
             if (!m_IME) m_Emulator->Tick(); // 1 cycle increase (tick) for exiting halt mode when IME=0 and is halted ??
             InterruptManager::ResetHaltMode();
         }
 
         for (int i = 0; i < 5; ++i)
         {
-            if (m_IME && TEST_BIT(m_Emulator->m_MemControl->IF, i) && TEST_BIT(m_Emulator->m_MemControl->IE, i))
+            if (m_IME && TEST_BIT(IF, i) && TEST_BIT(IE, i))
             {
-                m_Emulator->m_Cpu->HandleInterrupt(i);
+                m_Emulator->m_CPU->HandleInterrupt(i);
             }
         }
     }
@@ -2399,12 +2404,15 @@ void InterruptManager::Debug_PrintStatus()
 {
     std::cout << "*INTERRUPT MANAGER STATUS*" << std::endl;
     std::cout << "IME=" << m_Emulator->m_IntManager->GetIME() << " "
-              << "IF=" << int_to_bin8(m_Emulator->m_MemControl->IF) << " "
-              << "IE=" << int_to_bin8(m_Emulator->m_MemControl->IE) << std::endl;
+              << "IF=" << int_to_bin8(IF) << " "
+              << "IE=" << int_to_bin8(IE) << std::endl;
     std::cout << std::endl;
 }
 
 Timer::Timer(Emulator *emu)
+  : TIMA(emu->m_MemControl->m_IO[0x05]),
+    TMA(emu->m_MemControl->m_IO[0x06]),
+    TAC(emu->m_MemControl->m_IO[0x07])
 {
     m_Emulator = emu;
 }
@@ -2417,9 +2425,9 @@ Timer::~Timer()
 void Timer::Init()
 {
     DIV = 0x00;
-    m_Emulator->m_MemControl->TIMA = 0x00;
-    m_Emulator->m_MemControl->TMA = 0x00;
-    m_Emulator->m_MemControl->TAC = 0xF8;
+    TIMA = 0x00;
+    TMA = 0x00;
+    TAC = 0xF8;
     m_Freq = 1024;
     m_Counter = 0;
 }
@@ -2427,9 +2435,9 @@ void Timer::Init()
 void Timer::Reset()
 {
     DIV = 0xABCC;
-    m_Emulator->m_MemControl->TIMA = 0x00;
-    m_Emulator->m_MemControl->TMA = 0x00;
-    m_Emulator->m_MemControl->TAC = 0xF8;
+    TIMA = 0x00;
+    TMA = 0x00;
+    TAC = 0xF8;
     Timer::UpdateFreq();
     m_Counter = 0;
 }
@@ -2446,13 +2454,13 @@ void Timer::Update(int cycles)
 
         while (m_Counter >= m_Freq)
         {
-            if (m_Emulator->m_MemControl->TIMA < 0xFF)
+            if (TIMA < 0xFF)
             {
-                m_Emulator->m_MemControl->TIMA++;
+                TIMA++;
             }
             else
             {
-                m_Emulator->m_MemControl->TIMA = m_Emulator->m_MemControl->TMA;
+                TIMA = TMA;
                 m_Emulator->m_IntManager->RequestInterrupt(INT_TIMER);
             }
 
@@ -2474,88 +2482,88 @@ void Timer::UpdateFreq()
 
 int Timer::TimerEnable()
 {
-    return TEST_BIT(m_Emulator->m_MemControl->TAC, 2);
+    return TEST_BIT(TAC, 2);
 }
 
 int Timer::ClockSelect()
 {
-    return m_Emulator->m_MemControl->TAC & 0x3;
+    return TAC & 0x3;
 }
 
 void Timer::Debug_PrintStatus()
 {
     std::cout << "*TIMER STATUS*" << std::endl;
     std::cout << "DIV=" << int_to_hex(DIV) << " "
-              << "TIMA=" << int_to_hex(+m_Emulator->m_MemControl->TIMA, 2) << " "
-              << "TMA=" << int_to_hex(+m_Emulator->m_MemControl->TMA, 2) << " "
-              << "TAC=" << int_to_bin8(m_Emulator->m_MemControl->TAC) << std::endl;
+              << "TIMA=" << int_to_hex(+TIMA, 2) << " "
+              << "TMA=" << int_to_hex(+TMA, 2) << " "
+              << "TAC=" << int_to_bin8(TAC) << std::endl;
     std::cout << std::endl;
 }
 
-bool SimpleGpu::bLCDEnabled()
+bool SimpleGPU::bLCDEnabled()
 {
-    return TEST_BIT(m_Emulator->m_MemControl->LCDC, 7);
+    return TEST_BIT(LCDC, 7);
 }
 
-bool SimpleGpu::bWindowEnable()
+bool SimpleGPU::bWindowEnable()
 {
-    return TEST_BIT(m_Emulator->m_MemControl->LCDC, 5);
+    return TEST_BIT(LCDC, 5);
 }
 
-bool SimpleGpu::bSpriteEnable()
+bool SimpleGPU::bSpriteEnable()
 {
-    return TEST_BIT(m_Emulator->m_MemControl->LCDC, 1);
+    return TEST_BIT(LCDC, 1);
 }
 
-bool SimpleGpu::bBGAndWindowEnable()
+bool SimpleGPU::bBGAndWindowEnable()
 {
-    return TEST_BIT(m_Emulator->m_MemControl->LCDC, 0);
+    return TEST_BIT(LCDC, 0);
 }
 
-bool SimpleGpu::bCoincidenceStatInterrupt()
+bool SimpleGPU::bCoincidenceStatInterrupt()
 {
-    return TEST_BIT(m_Emulator->m_MemControl->STAT, 6);
+    return TEST_BIT(STAT, 6);
 }
 
-bool SimpleGpu::bOAMStatInterrupt()
+bool SimpleGPU::bOAMStatInterrupt()
 {
-    return TEST_BIT(m_Emulator->m_MemControl->STAT, 5);
+    return TEST_BIT(STAT, 5);
 }
 
-bool SimpleGpu::bVBlankStatInterrupt()
+bool SimpleGPU::bVBlankStatInterrupt()
 {
-    return TEST_BIT(m_Emulator->m_MemControl->STAT, 4);
+    return TEST_BIT(STAT, 4);
 }
 
-bool SimpleGpu::bHBlankStatInterrupt()
+bool SimpleGPU::bHBlankStatInterrupt()
 {
-    return TEST_BIT(m_Emulator->m_MemControl->STAT, 3);
+    return TEST_BIT(STAT, 3);
 }
 
-void SimpleGpu::UpdateMode(int mode)
+void SimpleGPU::UpdateMode(int mode)
 {
-    m_Emulator->m_MemControl->STAT &= 0b11111100;
-    m_Emulator->m_MemControl->STAT |= mode;
+    STAT &= 0b11111100;
+    STAT |= mode;
 }
 
-void SimpleGpu::UpdateLCDStatus()
+void SimpleGPU::UpdateLCDStatus()
 {
-    if (!SimpleGpu::bLCDEnabled())
+    if (!SimpleGPU::bLCDEnabled())
     {
         m_Counter = DOTS_PER_SCANLINE;
-        m_Emulator->m_MemControl->LY = 0;
-        SimpleGpu::UpdateMode(MODE_VBLANK);
+        LY = 0;
+        SimpleGPU::UpdateMode(MODE_VBLANK);
         return;
     }
 
     bool stat_int = false;
-    int old_mode = SimpleGpu::GetMode();
+    int old_mode = SimpleGPU::GetMode();
     int new_mode;
 
-    if (m_Emulator->m_MemControl->LY >= 144)
+    if (LY >= 144)
     {
         new_mode = MODE_VBLANK;
-        stat_int = SimpleGpu::bVBlankStatInterrupt();
+        stat_int = SimpleGPU::bVBlankStatInterrupt();
     }
     else
     {
@@ -2564,7 +2572,7 @@ void SimpleGpu::UpdateLCDStatus()
         if (dots <= 80) // mode 2
         {
             new_mode = MODE_OAM_SEARCH;
-            stat_int = SimpleGpu::bOAMStatInterrupt();
+            stat_int = SimpleGPU::bOAMStatInterrupt();
         }
         else if (dots > 80 && dots <= 360) // mode 3
         {
@@ -2573,62 +2581,62 @@ void SimpleGpu::UpdateLCDStatus()
         else // mode 0
         {
             new_mode = MODE_HBLANK;
-            stat_int = SimpleGpu::bHBlankStatInterrupt();
+            stat_int = SimpleGPU::bHBlankStatInterrupt();
         }
     }
 
-    SimpleGpu::UpdateMode(new_mode);
+    SimpleGPU::UpdateMode(new_mode);
 
     if (stat_int && (old_mode != new_mode))
     {
         m_Emulator->m_IntManager->RequestInterrupt(INT_LCD_STAT);
     }
 
-    if (m_Emulator->m_MemControl->LY == m_Emulator->m_MemControl->LYC)
+    if (LY == LYC)
     {
-        SET_BIT(m_Emulator->m_MemControl->STAT, 2);
+        SET_BIT(STAT, 2);
 
-        if (SimpleGpu::bCoincidenceStatInterrupt())
+        if (SimpleGPU::bCoincidenceStatInterrupt())
         {
             m_Emulator->m_IntManager->RequestInterrupt(INT_LCD_STAT);
         }
     }
     else
     {
-        RES_BIT(m_Emulator->m_MemControl->STAT, 2);
+        RES_BIT(STAT, 2);
     }
 }
 
-void SimpleGpu::DrawCurrentLine()
+void SimpleGPU::DrawCurrentLine()
 {
-    if (SimpleGpu::bBGAndWindowEnable())
+    if (SimpleGPU::bBGAndWindowEnable())
     {
-        SimpleGpu::RenderBackground();
+        SimpleGPU::RenderBackground();
     }
 
-    if (SimpleGpu::bSpriteEnable())
+    if (SimpleGPU::bSpriteEnable())
     {
-        SimpleGpu::RenderSprites();
+        SimpleGPU::RenderSprites();
     }
 }
 
-void SimpleGpu::RenderBackground()
+void SimpleGPU::RenderBackground()
 {
-    uint16_t wndTileMem = TEST_BIT(m_Emulator->m_MemControl->LCDC, 4) ? 0x8000 : 0x8800;
+    uint16_t wndTileMem = TEST_BIT(LCDC, 4) ? 0x8000 : 0x8800;
 
     bool _signed = wndTileMem == 0x8800;
-    bool usingWnd = TEST_BIT(m_Emulator->m_MemControl->LCDC, 5) && m_Emulator->m_MemControl->WY <= m_Emulator->m_MemControl->LY; // true if window display is enabled (specified in LCDC) and WndY <= LY
+    bool usingWnd = TEST_BIT(LCDC, 5) && WY <= LY; // true if window display is enabled (specified in LCDC) and WndY <= LY
 
-    uint16_t bkgdTileMem = TEST_BIT(m_Emulator->m_MemControl->LCDC, usingWnd ? 6 : 3) ? 0x9C00 : 0x9800;
+    uint16_t bkgdTileMem = TEST_BIT(LCDC, usingWnd ? 6 : 3) ? 0x9C00 : 0x9800;
 
     // the y-position is used to determine which of 32 (256 / 8) vertical tiles will used (background map y)
-    uint8_t yPos = !usingWnd ? m_Emulator->m_MemControl->SCY + m_Emulator->m_MemControl->LY : m_Emulator->m_MemControl->LY - m_Emulator->m_MemControl->WY; // map to window coordinates if necessary
+    uint8_t yPos = !usingWnd ? SCY + LY : LY - WY; // map to window coordinates if necessary
     uint16_t tileRow = ((uint8_t) (yPos / 8)) * 32; // which of 8 vertical pixels of the current tile is the scanline on?
 
     // time to draw a scanline which consists of 160 pixels
     for (int pixel = 0; pixel < 160; ++pixel)
     {
-        uint8_t xPos = usingWnd && pixel >= m_Emulator->m_MemControl->WX ? pixel - m_Emulator->m_MemControl->WX : m_Emulator->m_MemControl->SCX + pixel;
+        uint8_t xPos = usingWnd && pixel >= WX ? pixel - WX : SCX + pixel;
         uint16_t tileCol = xPos / 8; // which of horizontal pixels of the current tile does xPos fall in?
         uint16_t tileAddr = bkgdTileMem + tileRow + tileCol;
         int16_t tileNum = _signed ? (int8_t) m_Emulator->m_MemControl->ReadByte(tileAddr) : (uint8_t) m_Emulator->m_MemControl->ReadByte(tileAddr);
@@ -2644,13 +2652,13 @@ void SimpleGpu::RenderBackground()
         int bit = 7 - (xPos % 8); // bit position in data1 and data2 (because pixel 0 corresponds to bit 7 and pixel 1 corresponds to bit 6 and so on)
         int colourNum = (GET_BIT(data2, bit) << 1) | GET_BIT(data1, bit);
 
-        SimpleGpu::RenderPixel(m_Emulator->m_MemControl->LY, pixel, SimpleGpu::GetColour(colourNum, 0xFF47), -1);
+        SimpleGPU::RenderPixel(LY, pixel, SimpleGPU::GetColour(colourNum, 0xFF47), -1);
     }
 }
 
-void SimpleGpu::RenderSprites()
+void SimpleGPU::RenderSprites()
 {
-    bool use8x16 = TEST_BIT(m_Emulator->m_MemControl->LCDC, 2); // determine the sprite size
+    bool use8x16 = TEST_BIT(LCDC, 2); // determine the sprite size
 
     // the sprite layer can display up to 40 sprites
     for (int i = 0; i < 40; ++i)
@@ -2668,9 +2676,9 @@ void SimpleGpu::RenderSprites()
         int height = use8x16 ? 16 : 8;
 
         // does the scanline intercept this sprite?
-        if ((m_Emulator->m_MemControl->LY >= spriteY) && (m_Emulator->m_MemControl->LY < (spriteY + height)))
+        if ((LY >= spriteY) && (LY < (spriteY + height)))
         {
-            int line = m_Emulator->m_MemControl->LY - spriteY;
+            int line = LY - spriteY;
 
             if (yFlip)
             {
@@ -2694,7 +2702,7 @@ void SimpleGpu::RenderSprites()
                 }
 
                 int colourNum = (GET_BIT(data2, bit) << 1) | GET_BIT(data1, bit);
-                rgb_tuple col = SimpleGpu::GetColour(colourNum, TEST_BIT(attributes, 4) ? 0xFF49 : 0xFF48);
+                rgb_tuple col = SimpleGPU::GetColour(colourNum, TEST_BIT(attributes, 4) ? 0xFF49 : 0xFF48);
 
                 // it's transparent for sprites
                 if (col.r == gb_colours[SHADE0].r && col.g == gb_colours[SHADE0].g && col.b == gb_colours[SHADE0].b)
@@ -2704,18 +2712,18 @@ void SimpleGpu::RenderSprites()
 
                 int pixel = spriteX + (7 - tilePixel);
 
-                if ((m_Emulator->m_MemControl->LY < 0) || (m_Emulator->m_MemControl->LY > 143) || (pixel < 0) || (pixel > 159))
+                if ((LY < 0) || (LY > 143) || (pixel < 0) || (pixel > 159))
                 {
                     continue;
                 }
 
-                SimpleGpu::RenderPixel(m_Emulator->m_MemControl->LY, pixel, col, attributes);
+                SimpleGPU::RenderPixel(LY, pixel, col, attributes);
             }
         }
     }
 }
 
-void SimpleGpu::RenderPixel(int row, int col, rgb_tuple colour, int attr)
+void SimpleGPU::RenderPixel(int row, int col, rgb_tuple colour, int attr)
 {
     int offset = row * SCREEN_WIDTH * 4 + col * 4;
 
@@ -2735,7 +2743,7 @@ void SimpleGpu::RenderPixel(int row, int col, rgb_tuple colour, int attr)
     m_Pixels[offset + 3] = 255;
 }
 
-rgb_tuple SimpleGpu::GetColour(int colourNum, uint16_t address)
+rgb_tuple SimpleGPU::GetColour(int colourNum, uint16_t address)
 {
     uint8_t palette = m_Emulator->m_MemControl->ReadByte(address);
     int hi, lo;
@@ -2763,35 +2771,46 @@ rgb_tuple SimpleGpu::GetColour(int colourNum, uint16_t address)
     return gb_colours[(GET_BIT(palette, hi) << 1) | GET_BIT(palette, lo)];
 }
 
-SimpleGpu::SimpleGpu(Emulator *emu)
+SimpleGPU::SimpleGPU(Emulator *emu)
+  : LCDC(emu->m_MemControl->m_IO[0x40]),
+    STAT(emu->m_MemControl->m_IO[0x41]),
+    SCY(emu->m_MemControl->m_IO[0x42]),
+    SCX(emu->m_MemControl->m_IO[0x43]),
+    LY(emu->m_MemControl->m_IO[0x44]),
+    LYC(emu->m_MemControl->m_IO[0x45]),
+    BGP(emu->m_MemControl->m_IO[0x47]),
+    OBP0(emu->m_MemControl->m_IO[0x48]),
+    OBP1(emu->m_MemControl->m_IO[0x49]),
+    WY(emu->m_MemControl->m_IO[0x4A]),
+    WX(emu->m_MemControl->m_IO[0x4B])
 {
     m_Emulator = emu;
 }
 
-SimpleGpu::~SimpleGpu()
+SimpleGPU::~SimpleGPU()
 {
     
 }
 
-void SimpleGpu::Init()
+void SimpleGPU::Init()
 {
-    m_Emulator->m_MemControl->LY = 0x00;
+    LY = 0x00;
     std::fill(m_Pixels.begin(), m_Pixels.end(), 0);
 }
 
-void SimpleGpu::Reset()
+void SimpleGPU::Reset()
 {
-    m_Emulator->m_MemControl->LCDC = 0x91;
-    m_Emulator->m_MemControl->STAT = 0x85;
-    m_Emulator->m_MemControl->SCY = 0x00;
-    m_Emulator->m_MemControl->SCX = 0x00;
-    m_Emulator->m_MemControl->LY = 0x00;
-    m_Emulator->m_MemControl->LYC = 0x00;
-    m_Emulator->m_MemControl->BGP = 0xFC;
-    m_Emulator->m_MemControl->OBP0 = 0xFF;
-    m_Emulator->m_MemControl->OBP1 = 0xFF;
-    m_Emulator->m_MemControl->WY = 0x00;
-    m_Emulator->m_MemControl->WX = 0x00;
+    LCDC = 0x91;
+    STAT = 0x85;
+    SCY = 0x00;
+    SCX = 0x00;
+    LY = 0x00;
+    LYC = 0x00;
+    BGP = 0xFC;
+    OBP0 = 0xFF;
+    OBP1 = 0xFF;
+    WY = 0x00;
+    WX = 0x00;
 }
 
 /* TODO when running boot run, the emulator takes a while to exit this loop
@@ -2804,40 +2823,40 @@ JR NZ, Addr_0064    ; $006b
 
 figure out why
 */
-void SimpleGpu::Update(int cycles)
+void SimpleGPU::Update(int cycles)
 {
-    SimpleGpu::UpdateLCDStatus();
+    SimpleGPU::UpdateLCDStatus();
 
-    if (!SimpleGpu::bLCDEnabled()) return;
+    if (!SimpleGPU::bLCDEnabled()) return;
 
     m_Counter -= cycles;
 
     if (m_Counter <= 0)
     {
         m_Counter = DOTS_PER_SCANLINE;
-        m_Emulator->m_MemControl->LY++;
+        LY++;
 
-        if (m_Emulator->m_MemControl->LY == 144)
+        if (LY == 144)
         {
             m_Emulator->m_IntManager->RequestInterrupt(INT_VBLANK);
         }
-        else if (m_Emulator->m_MemControl->LY == 154)
+        else if (LY == 154)
         {
-            m_Emulator->m_MemControl->LY = 0;
+            LY = 0;
         }
-        else if (m_Emulator->m_MemControl->LY < 144)
+        else if (LY < 144)
         {
-            SimpleGpu::DrawCurrentLine();
+            SimpleGPU::DrawCurrentLine();
         }
     }
 }
 
-int SimpleGpu::GetMode()
+int SimpleGPU::GetMode()
 {
-    return m_Emulator->m_MemControl->STAT & 0b00000011;
+    return STAT & 0b00000011;
 }
 
-void SimpleGpu::Debug_PrintStatus()
+void SimpleGPU::Debug_PrintStatus()
 {
     std::cout << "*GPU STATUS*" << std::endl;
     // TODO
@@ -3004,7 +3023,7 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
     {
 #ifndef GUI_MODE
         std::cerr << "MemoryController::ReadByte: Invalid address range: " << int_to_hex(address) << std::endl;
-        m_Emulator->m_Cpu->Debug_PrintStatus();
+        m_Emulator->m_CPU->Debug_PrintStatus();
 #else
         LOG_IF_F(ERROR, true, "MemoryController::ReadByte: Invalid address range: %04X", address);
 #endif
@@ -3077,7 +3096,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     else if (address == 0xFF07)
     {
         int oldfreq = m_Emulator->m_Timer->ClockSelect();
-        TAC = data;
+        m_Emulator->m_Timer->TAC = data;
         int newfreq = m_Emulator->m_Timer->ClockSelect();
 
         if (oldfreq != newfreq)
@@ -3087,7 +3106,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else if (address == 0xFF44)
     {
-        LY = 0;
+        m_Emulator->m_GPU->LY = 0;
     }
     else if (address == 0xFF46)
     {
@@ -3115,7 +3134,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     {
 #ifndef GUI_MODE
         std::cerr << "MemoryController::WriteByte: Invalid address range: " << int_to_hex(address) << std::endl;
-        m_Emulator->m_Cpu->Debug_PrintStatus();
+        m_Emulator->m_CPU->Debug_PrintStatus();
 #else
         LOG_IF_F(ERROR, true, "MemoryController::WriteByte: Invalid address range: %04X", address);
 #endif
@@ -3151,7 +3170,7 @@ void MemoryController::Debug_PrintMemoryRange(uint16_t start, uint16_t end)
     }
 }
 
-JoyPad::JoyPad(Emulator *emu)
+JoyPad::JoyPad(Emulator *emu) : P1(emu->m_MemControl->m_IO[0x00])
 {
     m_Emulator = emu;
 }
@@ -3164,13 +3183,13 @@ JoyPad::~JoyPad()
 void JoyPad::Init()
 {
     joypad_state = 0xFF; // 0b11111111
-    m_Emulator->m_MemControl->P1 = 0xC0; // 0b11000000
+    P1 = 0xC0; // 0b11000000
 }
 
 void JoyPad::Reset()
 {
     joypad_state = 0xFF;
-    m_Emulator->m_MemControl->P1 = 0xCF;
+    P1 = 0xCF;
 }
 
 void JoyPad::PressButton(int button)
@@ -3179,8 +3198,8 @@ void JoyPad::PressButton(int button)
 
     RES_BIT(joypad_state, button);
 
-    if (((button > 3 && !TEST_BIT(m_Emulator->m_MemControl->P1, 5)) ||
-         (button <= 3 && !TEST_BIT(m_Emulator->m_MemControl->P1, 4))) &&
+    if (((button > 3 && !TEST_BIT(P1, 5)) ||
+         (button <= 3 && !TEST_BIT(P1, 4))) &&
         !pressed)
     {
         m_Emulator->m_IntManager->RequestInterrupt(INT_JOYPAD);
@@ -3194,7 +3213,7 @@ void JoyPad::ReleaseButton(int button)
 
 uint8_t JoyPad::ReadP1()
 {
-    int jp_reg = m_Emulator->m_MemControl->P1;
+    int jp_reg = P1;
 
     jp_reg |= 0xCF; // 0b11001111
 
@@ -3230,11 +3249,11 @@ void JoyPad::Debug_PrintStatus()
 
 Emulator::Emulator()
 {
-    m_Cpu = std::make_unique<Cpu>(this);
+    m_CPU = std::make_unique<CPU>(this);
     m_MemControl = std::make_unique<MemoryController>(this);
     m_IntManager = std::make_unique<InterruptManager>(this);
     m_Timer = std::make_unique<Timer>(this);
-    m_Gpu = std::make_unique<SimpleGpu>(this);
+    m_GPU = std::make_unique<SimpleGPU>(this);
     m_JoyPad = std::make_unique<JoyPad>(this);
 }
 
@@ -3245,20 +3264,20 @@ Emulator::~Emulator()
 
 void Emulator::InitComponents()
 {
-    m_Cpu->Init();
+    m_CPU->Init();
     m_IntManager->Init();
     m_Timer->Init();
-    m_Gpu->Init();
+    m_GPU->Init();
     m_JoyPad->Init();
     m_TotalCycles = m_PrevTotalCycles = 0;
 }
 
 void Emulator::ResetComponents()
 {
-    m_Cpu->Reset();
+    m_CPU->Reset();
     m_IntManager->Reset();
     m_Timer->Reset();
-    m_Gpu->Reset();
+    m_GPU->Reset();
     m_JoyPad->Reset();
     m_TotalCycles = m_PrevTotalCycles = 0;
 }
@@ -3268,9 +3287,9 @@ void Emulator::Update()
     while ((m_TotalCycles - m_PrevTotalCycles) <= MAX_CYCLES)
     {
         int initial_cycles = m_TotalCycles;
-        m_Cpu->Step();
+        m_CPU->Step();
         int cycles = m_TotalCycles - initial_cycles;
-        m_Gpu->Update(cycles);
+        m_GPU->Update(cycles);
         m_Timer->Update(cycles);
     }
 
@@ -3292,9 +3311,9 @@ void Emulator::Debug_Step(std::vector<char>& blargg_serial, int times)
         }
 
         int initial_cycles = m_TotalCycles;
-        m_Cpu->Step();
+        m_CPU->Step();
         int cycles = m_TotalCycles - initial_cycles;
-        m_Gpu->Update(cycles);
+        m_GPU->Update(cycles);
         m_Timer->Update(cycles);
 
         // blarggs test - serial output
@@ -3308,7 +3327,7 @@ void Emulator::Debug_Step(std::vector<char>& blargg_serial, int times)
 
 void Emulator::Debug_StepTill(std::vector<char>& blargg_serial, uint16_t x)
 {
-    while (m_Cpu->GetPC() != x)
+    while (m_CPU->GetPC() != x)
     {
         Emulator::Debug_Step(blargg_serial, 1);
     }
@@ -3316,10 +3335,10 @@ void Emulator::Debug_StepTill(std::vector<char>& blargg_serial, uint16_t x)
 
 void Emulator::Debug_PrintEmulatorStatus()
 {
-    m_Cpu->Debug_PrintStatus();
+    m_CPU->Debug_PrintStatus();
     m_IntManager->Debug_PrintStatus();
     m_Timer->Debug_PrintStatus();
-    m_Gpu->Debug_PrintStatus();
+    m_GPU->Debug_PrintStatus();
     m_JoyPad->Debug_PrintStatus();
 }
 
@@ -3398,7 +3417,7 @@ void GameBoyWindows::RenderGraphics()
 {
     SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 255);
     SDL_RenderClear(m_Renderer);
-    SDL_UpdateTexture(m_Texture, nullptr, m_Emulator->m_Gpu->m_Pixels.data(), SCREEN_WIDTH * 4);
+    SDL_UpdateTexture(m_Texture, nullptr, m_Emulator->m_GPU->m_Pixels.data(), SCREEN_WIDTH * 4);
     SDL_RenderCopy(m_Renderer, m_Texture, nullptr, nullptr);
     SDL_RenderPresent(m_Renderer);
 }
@@ -3721,7 +3740,7 @@ int main(int argc, char *argv[])
                 }
                 else if (str == "cpu")
                 {
-                    emu->m_Cpu->Debug_PrintStatus();
+                    emu->m_CPU->Debug_PrintStatus();
                 }
                 else if (str == "intman")
                 {
@@ -3733,7 +3752,7 @@ int main(int argc, char *argv[])
                 }
                 else if (str == "gpu")
                 {
-                    emu->m_Gpu->Debug_PrintStatus();
+                    emu->m_GPU->Debug_PrintStatus();
                 }
                 else if (str == "joypad")
                 {
@@ -3758,7 +3777,7 @@ int main(int argc, char *argv[])
             }
             else if (str == "ins")
             {
-                emu->m_Cpu->Debug_PrintCurrentInstruction();
+                emu->m_CPU->Debug_PrintCurrentInstruction();
             }
         }
         else if (str == "edit")
@@ -3770,7 +3789,7 @@ int main(int argc, char *argv[])
                 int r8 = int_from_string(str, false);
                 iss >> str;
                 int v = int_from_string(str, true);
-                emu->m_Cpu->Debug_EditRegister(r8, v, true);
+                emu->m_CPU->Debug_EditRegister(r8, v, true);
             }
             else if (str == "flag")
             {
@@ -3778,7 +3797,7 @@ int main(int argc, char *argv[])
                 int f = int_from_string(str, false);
                 iss >> str;
                 int v = int_from_string(str, false);
-                emu->m_Cpu->Debug_EditFlag(f, v);
+                emu->m_CPU->Debug_EditFlag(f, v);
             }
             else if (str == "reg16")
             {
@@ -3786,7 +3805,7 @@ int main(int argc, char *argv[])
                 int r16 = int_from_string(str, false);
                 iss >> str;
                 int v = int_from_string(str, true);
-                emu->m_Cpu->Debug_EditRegister(r16, v, false);
+                emu->m_CPU->Debug_EditRegister(r16, v, false);
             }
             else if (str == "mem")
             {

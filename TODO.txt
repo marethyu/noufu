@@ -34,7 +34,5 @@ opengl
 video recording (to gif)
 msgbox err msgs
 stop emulation
-remove m_IO - move registers to respective classes?
-Cpu -> CPU, Gpu -> GPU, etc.
 keyboard shortcuts for menubar items
 no sdl option
