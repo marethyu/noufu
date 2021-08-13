@@ -1,60 +1,3 @@
-// Gameboy
-/* GUI compile: g++ main.cpp loguru.cpp -o main -D NDEBUG -std=c++14 -lSDL2 -lcomdlg32 -mwindows -Wl,-subsystem,windows --machine-windows */
-/* CLI compile: g++ main.cpp -o main */
-/*
-Stage 1: Pass Blargg's CPU tests (complete)
-Stage 2: Refactor code (make seperate files for each class) and implement PPU to run Boot rom (don't forgot to make a Makefile)
-Stage 3: Pass other Blargg's tests (mem_timing.gb, mem_timing2.gb, halt_bug.gb)
-Stage 4: Make sure it can run Tetris without problems
-Stage 5: Implement a seperate class for cartridge with basic MBC support and make sure it can run Mario
-*/
-/*
-debug cmds:
-step ([x]) - step cpu for x times (x=1 is default)
-quit - quit debugger
-print status [all cpu intman timer gpu joypad]
-print mem [addr] - print value in mem bus at addr
-print mem range [start] [end] - print memory values from start to end
-print ins - print current instruction
-edit reg8 [r8] [v] - change the value of register r8 with v
-edit flag [f] [v] - change the value of flag f with v
-edit reg16 [r16] [v] - change the value of register r16 with v
-edit mem [addr] [v] - change the value of mem addr with v
-blargg - display serial output results
-run x - run till PC=x (x is hex)
-reload-rom
-
-TODO:
-print rom-info - print basic rom information
-save-state fname - save current emulator state to fname
-load-state fname - load current emulator state from fname
-
-notes: both addr and v are hex
-
-emulator modes (TODO):
-- gui - win32 + sdl2 with logging system
-- cli - cli debugger with sdl windows (view current screen state, vram/oam state, etc.)
-
-TODO: implement MBC (make cartridge class)
-*/
-/*
-blargg tests passed:
-- 01-special.gb
-- 02-interrupts.gb**
-- 03-op sp,hl.gb
-- 04-op r,imm.gb
-- 05-op rp.gb
-- 06-ld r,r.gb
-- 07-jr,jp,call,ret,rst.gb
-- 08-misc instrs.gb
-- 09-op r,r.gb
-- 10-bit ops.gb
-- 11-op a,(hl).gb
-- instr_timing.gb
-
-**halt is taking too long... perhaps it will be solved after PPU implementation is complete...
-*/
-
 #include <algorithm>
 #include <array>
 #include <fstream>
@@ -94,7 +37,7 @@ blargg tests passed:
 #endif
 
 #ifndef NDEBUG
-const std::string ROM_FILE_PATH = "../IronBoy/ROMS/blargg_tests/instr_timing/instr_timing.gb";
+const std::string ROM_FILE_PATH = "ROMS/blargg_tests/instr_timing/instr_timing.gb";
 #endif
 
 const std::string EMULATOR_NAME = "Noufu";
@@ -843,7 +786,6 @@ class MBC1; // TODO
 class MemoryController;
 class JoyPad;
 class Emulator;
-class GameBoyCLI; // TODO
 #ifdef NDEBUG
 class GameBoyWindows;
 #endif
@@ -2866,7 +2808,7 @@ SimpleGpu::~SimpleGpu()
 void SimpleGpu::Init()
 {
 #ifndef NDEBUG
-    m_Emulator->m_MemControl->LY = 0x90;
+    m_Emulator->m_MemControl->LY = 0x90; // TODO remove this
 #endif
     std::fill(m_Pixels.begin(), m_Pixels.end(), 0);
 }
