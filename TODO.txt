@@ -6,7 +6,7 @@ serial communication
 debug window
 save state
 double speed mode
-stop/pause emulation
+pause emulation
 code refactoring
 organize files
 battery
@@ -31,5 +31,10 @@ label memory regions for debugging
 implement more commands for debugging cli
 fix all TODOs
 opengl
-make GameBoyWin32 'proper' win32 class (include winproc functions like void command(WPARAM, LPARAM);, void create(HWND);, int destroy();)
 video recording (to gif)
+msgbox err msgs
+stop emulation
+remove m_IO - move registers to respective classes?
+Cpu -> CPU, Gpu -> GPU, etc.
+keyboard shortcuts for menubar items
+no sdl option

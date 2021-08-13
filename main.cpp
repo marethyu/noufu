@@ -63,6 +63,7 @@ blargg tests passed:
 #include <string>
 #include <vector>
 
+#include <cstdio>
 #include <ctime>
 
 #define SCREEN_WIDTH 160
@@ -72,10 +73,7 @@ blargg tests passed:
 
 #include <Windows.h>
 
-#define SDL_MAIN_HANDLED
-
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_syswm.h>
 
 #include "loguru.hpp"
 
@@ -84,6 +82,8 @@ blargg tests passed:
 #define ID_EXIT 2
 #define ID_ABOUT 3
 
+#define ID_TIMER 1
+
 #else
 
 #include <bitset>
@@ -91,15 +91,13 @@ blargg tests passed:
 #include <iostream>
 #include <sstream>
 
-#include <cstdio>
-
 #endif
 
 #ifndef NDEBUG
 const std::string ROM_FILE_PATH = "../IronBoy/ROMS/blargg_tests/instr_timing/instr_timing.gb";
 #endif
 
-const std::string EMULATOR_NAME = "脳腐";
+const std::string EMULATOR_NAME = "Noufu";
 
 const std::string CONFIG_FILE_PATH = "config";
 
@@ -109,7 +107,7 @@ const int MAX_CYCLES = 70224;         // 154 scanlines * 456 cycles per frame = 
 const int DOTS_PER_SCANLINE = 456;
 
 // Delay between updates
-const float UPDATE_INTERVAL = 16.744; // 1000 ms / 59.72 fps
+const int UPDATE_INTERVAL = 13; // 1000 ms / 59.72 fps = 16.744 (adjusted for win32 timer)
 
 const int HL_add[] = {0, 0, 1, -1};
 const int RST_ADDR[] = {0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38};
@@ -775,7 +773,48 @@ std::string int_to_bin8(T i, bool prefixed=true)
     stream << (prefixed ? "0b" : "") << std::bitset<8>(i);
     return stream.str();
 }
+#else
+
+int CDECL PopMessageBox(TCHAR *szTitle, UINT uType, const char* format, ...)
+{
+	char buffer[100];
+	va_list vl;
+
+	va_start(vl, format);
+    vsprintf(buffer, format, vl);
+	va_end(vl);
+
+	return MessageBox(nullptr, buffer, szTitle, uType);
+}
 #endif
+
+/* configurable variables */
+int SCREEN_SCALE_FACTOR;
+bool ENABLE_BOOT_ROM;
+std::string BOOT_ROM_PATH;
+
+void ConfigureEmulatorSettings()
+{
+    std::ifstream istream(CONFIG_FILE_PATH, std::ios::in);
+    std::string line;
+    std::string val;
+
+    if (!istream)
+    {
+        throw std::system_error(errno, std::system_category(), "failed to open " + CONFIG_FILE_PATH);
+    }
+
+    std::getline(istream, line);
+    SCREEN_SCALE_FACTOR = stoi(line.substr(line.find("=") + 1));
+
+    std::getline(istream, line);
+    ENABLE_BOOT_ROM = stoi(line.substr(line.find("=") + 1));
+
+    std::getline(istream, line);
+    BOOT_ROM_PATH = line.substr(line.find("=") + 1);
+
+    istream.close();
+}
 
 struct rgb_tuple
 {
@@ -803,11 +842,10 @@ class MBCBase; /* abstract */ // TODO
 class MBC1; // TODO
 class MemoryController;
 class JoyPad;
-class EmulatorConfig;
 class Emulator;
 class GameBoyCLI; // TODO
 #ifdef NDEBUG
-class GameBoyWindows; // TODO refactor
+class GameBoyWindows;
 #endif
 
 class GBComponent
@@ -1085,19 +1123,6 @@ public:
 #endif
 };
 
-class EmulatorConfig
-{
-private:
-    void Init();
-public:
-    EmulatorConfig();
-    ~EmulatorConfig();
-
-    int ScreenScaleFactor;
-    bool EnableBootROM;
-    std::string BootROMPath;
-};
-
 class Emulator
 {
 public:
@@ -1123,8 +1148,6 @@ public:
     std::unique_ptr<SimpleGpu> m_Gpu;
     std::unique_ptr<JoyPad> m_JoyPad;
 
-    EmulatorConfig *config;
-
     int m_TotalCycles; // T-cycles
     int m_PrevTotalCycles;
 };
@@ -1134,25 +1157,26 @@ class GameBoyWindows
 {
 private:
     Emulator *m_Emulator;
+
     SDL_Window *m_Window;
     SDL_Renderer *m_Renderer;
     SDL_Texture *m_Texture;
-    HWND hWnd;
-
-    GameBoyWindows();
-    bool CreateSDLWindow();
-
-    static GameBoyWindows *m_Instance;
 public:
-    static GameBoyWindows *CreateInstance();
-    static GameBoyWindows *GetSingleton();
-
+    GameBoyWindows();
     ~GameBoyWindows();
 
     void Initialize();
-    void DoEmulation();
+    void LoadROM(const std::string& rom_file);
+    void ReloadROM();
+
+    void Create(HWND);
+    void FixSize();
+    void Update();
     void RenderGame();
-    void HandleInput(SDL_Event& evt);
+    void HandleKeyDown(WPARAM wParam);
+    void HandleKeyUp(WPARAM wParam);
+    void CleanUp();
+    void Destroy();
 };
 #endif
 
@@ -2912,11 +2936,11 @@ void SimpleGpu::Debug_PrintStatus()
 
 void MemoryController::InitBootROM()
 {
-    std::ifstream istream(m_Emulator->config->BootROMPath, std::ios::in | std::ios::binary);
+    std::ifstream istream(BOOT_ROM_PATH, std::ios::in | std::ios::binary);
 
     if (!istream)
     {
-        throw std::system_error(errno, std::system_category(), "failed to open " + m_Emulator->config->BootROMPath);
+        throw std::system_error(errno, std::system_category(), "failed to open " + BOOT_ROM_PATH);
     }
 
     istream.read(reinterpret_cast<char *>(m_BootROM.data()), 0x100);
@@ -2938,7 +2962,7 @@ MemoryController::MemoryController(Emulator *emu)
 {
     m_Emulator = emu;
 
-    if (m_Emulator->config->EnableBootROM)
+    if (ENABLE_BOOT_ROM)
     {
         MemoryController::InitBootROM();
     }
@@ -2980,7 +3004,7 @@ void MemoryController::LoadROM(const std::string& rom_file)
 
     istream.close();
 
-    if (!m_Emulator->config->EnableBootROM)
+    if (!ENABLE_BOOT_ROM)
     {
         m_Emulator->ResetComponents();
     }
@@ -2992,7 +3016,7 @@ void MemoryController::LoadROM(const std::string& rom_file)
 
 void MemoryController::ReloadROM()
 {
-    if (!m_Emulator->config->EnableBootROM)
+    if (!ENABLE_BOOT_ROM)
     {
         m_Emulator->ResetComponents();
     }
@@ -3298,42 +3322,8 @@ void JoyPad::Debug_PrintStatus()
 }
 #endif
 
-void EmulatorConfig::Init()
-{
-    std::ifstream istream(CONFIG_FILE_PATH, std::ios::in);
-    std::string line;
-    std::string val;
-
-    if (!istream)
-    {
-        throw std::system_error(errno, std::system_category(), "failed to open " + CONFIG_FILE_PATH);
-    }
-
-    std::getline(istream, line);
-    ScreenScaleFactor = stoi(line.substr(line.find("=") + 1));
-
-    std::getline(istream, line);
-    EnableBootROM = stoi(line.substr(line.find("=") + 1));
-
-    std::getline(istream, line);
-    BootROMPath = line.substr(line.find("=") + 1);
-
-    istream.close();
-}
-
-EmulatorConfig::EmulatorConfig()
-{
-    EmulatorConfig::Init();
-}
-
-EmulatorConfig::~EmulatorConfig()
-{
-    
-}
-
 Emulator::Emulator()
 {
-    config = new EmulatorConfig();
     m_Cpu = std::unique_ptr<Cpu>(new Cpu(this));
     m_MemControl = std::unique_ptr<MemoryController>(new MemoryController(this));
     m_IntManager = std::unique_ptr<InterruptManager>(new InterruptManager(this));
@@ -3426,108 +3416,149 @@ void Emulator::Debug_PrintEmulatorStatus()
 #endif
 
 #ifdef NDEBUG
-
 GameBoyWindows::GameBoyWindows()
 {
     m_Emulator = new Emulator();
-
-    if (!GameBoyWindows::CreateSDLWindow())
-    {
-        MessageBox(nullptr, TEXT("SDL window cannot be created."), TEXT("Error"), MB_OK | MB_ICONERROR);
-        std::exit(1);
-    }
-}
-
-bool GameBoyWindows::CreateSDLWindow()
-{
-    if(SDL_Init(SDL_INIT_EVERYTHING) < 0)
-    {
-        return false;
-    }
-
-    m_Window = SDL_CreateWindow(EMULATOR_NAME.c_str(),
-                                SDL_WINDOWPOS_UNDEFINED,
-                                SDL_WINDOWPOS_UNDEFINED,
-                                SCREEN_WIDTH * m_Emulator->config->ScreenScaleFactor,
-                                SCREEN_HEIGHT * m_Emulator->config->ScreenScaleFactor,
-                                SDL_WINDOW_SHOWN);
-    if (m_Window == nullptr)
-    {
-        return false;
-    }
-
-    m_Renderer = SDL_CreateRenderer(m_Window,
-                                    -1,
-                                    SDL_RENDERER_ACCELERATED);
-    if (m_Renderer == nullptr)
-    {
-        return false;
-    }
-
-    m_Texture = SDL_CreateTexture(m_Renderer,
-                                  SDL_PIXELFORMAT_ARGB8888,
-                                  SDL_TEXTUREACCESS_STREAMING,
-                                  SCREEN_WIDTH,
-                                  SCREEN_HEIGHT);
-    if (m_Texture == nullptr)
-    {
-        return false;
-    }
-
-    SDL_SysWMinfo info;
-    SDL_VERSION(&info.version);
-
-    if (!SDL_GetWindowWMInfo(m_Window, &info))
-    {
-        return false;
-    }
-
-    hWnd = info.info.win.window;
-
-    HMENU hMenuBar = CreateMenu();
-    HMENU hFile = CreatePopupMenu();
-    HMENU hHelp = CreatePopupMenu();
-
-    AppendMenu(hMenuBar, MF_POPUP, (UINT_PTR) hFile, "File");
-    AppendMenu(hMenuBar, MF_POPUP, (UINT_PTR) hHelp, "Help");
-
-    AppendMenu(hFile, MF_STRING, ID_LOAD_ROM, "Load ROM");
-    AppendMenu(hFile, MF_STRING, ID_RELOAD_ROM, "Reload ROM");
-    AppendMenu(hFile, MF_STRING, ID_EXIT, "Exit");
-
-    AppendMenu(hHelp, MF_STRING, ID_ABOUT, "About");
-
-    SetMenu(hWnd, hMenuBar);
-
-    SDL_SetWindowSize(m_Window,
-                      SCREEN_WIDTH * m_Emulator->config->ScreenScaleFactor,
-                      SCREEN_HEIGHT * m_Emulator->config->ScreenScaleFactor); // resize because we just added the menubar
-    SDL_EventState(SDL_SYSWMEVENT, SDL_ENABLE);
-
-    return true;
-}
-
-GameBoyWindows *GameBoyWindows::m_Instance = 0;
-
-GameBoyWindows *GameBoyWindows::CreateInstance()
-{
-    if (m_Instance == 0)
-    {
-        m_Instance = new GameBoyWindows();
-    }
-
-    return m_Instance;
-}
-
-GameBoyWindows *GameBoyWindows::GetSingleton()
-{
-    return m_Instance;
 }
 
 GameBoyWindows::~GameBoyWindows()
 {
-    delete m_Emulator;
+    // if you add this line, it will slow the window closing procedure...
+    // delete m_Emulator;
+}
 
+void GameBoyWindows::Initialize()
+{
+    m_Emulator->InitComponents();
+}
+
+void GameBoyWindows::LoadROM(const std::string& rom_file)
+{
+    m_Emulator->InitComponents();
+    m_Emulator->m_MemControl->LoadROM(rom_file);
+    LOG_F(INFO, "Loaded %s", rom_file.c_str());
+}
+
+void GameBoyWindows::ReloadROM()
+{
+    m_Emulator->InitComponents();
+    m_Emulator->m_MemControl->ReloadROM();
+    LOG_F(INFO, "Current ROM reloaded");
+}
+
+void GameBoyWindows::Create(HWND hWnd)
+{
+    if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
+    {
+        PopMessageBox(TEXT("SDL Error"), MB_OK | MB_ICONERROR, "Couldn't initialize SDL: %s", SDL_GetError());
+        std::exit(1);
+    }
+
+    m_Window = SDL_CreateWindowFrom(hWnd);
+    if (m_Window == nullptr)
+    {
+        PopMessageBox(TEXT("SDL Error"), MB_OK | MB_ICONERROR, "Couldn't create window: %s", SDL_GetError());
+        std::exit(1);
+    }
+
+    m_Renderer = SDL_CreateRenderer(m_Window, -1, SDL_RENDERER_ACCELERATED);
+    if (m_Renderer == nullptr)
+    {
+        PopMessageBox(TEXT("SDL Error"), MB_OK | MB_ICONERROR, "Couldn't create renderer: %s", SDL_GetError());
+        std::exit(1);
+    }
+
+    m_Texture = SDL_CreateTexture(m_Renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
+    if (m_Texture == nullptr)
+    {
+        PopMessageBox(TEXT("SDL Error"), MB_OK | MB_ICONERROR, "Couldn't create texture: %s", SDL_GetError());
+        std::exit(1);
+    }
+}
+
+void GameBoyWindows::FixSize()
+{
+    SDL_SetWindowSize(m_Window, SCREEN_WIDTH * SCREEN_SCALE_FACTOR, SCREEN_HEIGHT * SCREEN_SCALE_FACTOR);
+}
+
+void GameBoyWindows::Update()
+{
+    m_Emulator->Update();
+}
+
+void GameBoyWindows::RenderGame()
+{
+    SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 255);
+    SDL_RenderClear(m_Renderer);
+    SDL_UpdateTexture(m_Texture, nullptr, m_Emulator->m_Gpu->m_Pixels.data(), SCREEN_WIDTH * 4);
+    SDL_RenderCopy(m_Renderer, m_Texture, nullptr, nullptr);
+    SDL_RenderPresent(m_Renderer);
+}
+
+void GameBoyWindows::HandleKeyDown(WPARAM wParam)
+{
+    switch (wParam)
+    {
+    case 0x41: // a key
+        m_Emulator->m_JoyPad->PressButton(JOYPAD_A);
+        break;
+    case 0x42: // b key
+        m_Emulator->m_JoyPad->PressButton(JOYPAD_B);
+        break;
+    case VK_RETURN:
+        m_Emulator->m_JoyPad->PressButton(JOYPAD_START);
+        break;
+    case VK_SPACE:
+        m_Emulator->m_JoyPad->PressButton(JOYPAD_SELECT);
+        break;
+    case VK_RIGHT:
+        m_Emulator->m_JoyPad->PressButton(JOYPAD_RIGHT);
+        break;
+    case VK_LEFT:
+        m_Emulator->m_JoyPad->PressButton(JOYPAD_LEFT);
+        break;
+    case VK_UP:
+        m_Emulator->m_JoyPad->PressButton(JOYPAD_UP);
+        break;
+    case VK_DOWN:
+        m_Emulator->m_JoyPad->PressButton(JOYPAD_DOWN);
+        break;
+    }
+}
+
+void GameBoyWindows::HandleKeyUp(WPARAM wParam)
+{
+    switch (wParam)
+    {
+    case 0x41: // a key
+        m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_A);
+        break;
+    case 0x42: // b key
+        m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_B);
+        break;
+    case VK_RETURN:
+        m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_START);
+        break;
+    case VK_SPACE:
+        m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_SELECT);
+        break;
+    case VK_RIGHT:
+        m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_RIGHT);
+        break;
+    case VK_LEFT:
+        m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_LEFT);
+        break;
+    case VK_UP:
+        m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_UP);
+        break;
+    case VK_DOWN:
+        m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_DOWN);
+        break;
+    }
+}
+
+void GameBoyWindows::CleanUp()
+{
     SDL_DestroyTexture(m_Texture);
     m_Texture = nullptr;
 
@@ -3540,207 +3571,191 @@ GameBoyWindows::~GameBoyWindows()
     SDL_Quit();
 }
 
-void GameBoyWindows::Initialize()
+void GameBoyWindows::Destroy()
 {
-    m_Emulator->InitComponents();
-}
-
-void GameBoyWindows::DoEmulation()
-{
-    bool bFirstTime = true;
-    bool bROMLoaded = false;
-    bool quit = false;
-
-    SDL_Event evt;
-
-    uint32_t time2;
-
-    while (true)
-    {
-        while (SDL_PollEvent(&evt) != 0)
-        {
-            switch (evt.type)
-            {
-            case SDL_SYSWMEVENT:
-                switch (evt.syswm.msg->msg.win.msg)
-                {
-                case WM_COMMAND:
-                    switch (LOWORD(evt.syswm.msg->msg.win.wParam))
-                    {
-                    case ID_LOAD_ROM:
-                    {
-                        OPENFILENAME ofn;
-                        char szFileName[MAX_PATH] = "";
-                        ZeroMemory(&ofn, sizeof(ofn));
-
-                        ofn.lStructSize = sizeof(ofn);
-                        ofn.hwndOwner = hWnd;
-                        ofn.lpstrFilter = "ROM files (*.gb)\0*.gb\0";
-                        ofn.lpstrFile = szFileName;
-                        ofn.nMaxFile = MAX_PATH;
-                        ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
-                        ofn.lpstrDefExt = "gb";
-
-                        if(GetOpenFileName(&ofn))
-                        {
-                            m_Emulator->InitComponents();
-                            m_Emulator->m_MemControl->LoadROM(szFileName);
-                            bROMLoaded = true;
-                            bFirstTime = true;
-                            LOG_F(INFO, "Loaded %s", szFileName);
-                        }
-                        break;
-                    }
-                    case ID_RELOAD_ROM:
-                    {
-                        m_Emulator->InitComponents();
-                        m_Emulator->m_MemControl->ReloadROM();
-                        LOG_F(INFO, "Current ROM reloaded");
-                        break;
-                    }
-                    case ID_EXIT:
-                        quit = true;
-                        break;
-                    case ID_ABOUT:
-                        MessageBox(hWnd, TEXT("um..."), TEXT("About Noufu"), MB_ICONINFORMATION | MB_OK);
-                        break;
-                    }
-                    break;
-                }
-                break;
-                break;
-            case SDL_WINDOWEVENT_CLOSE:
-                evt.type = SDL_QUIT;
-                SDL_PushEvent(&evt);
-                break;
-            case SDL_QUIT:
-                quit = true;
-                break;
-            default:
-                GameBoyWindows::HandleInput(evt);
-                break;
-            }
-        }
-
-        if (quit)
-        {
-            break;
-        }
-
-        if (bROMLoaded)
-        {
-            if (bFirstTime)
-            {
-                time2 = SDL_GetTicks();
-                bFirstTime = false;
-            }
-
-            uint32_t current = SDL_GetTicks();
-
-            if ((time2 + UPDATE_INTERVAL) < current)
-            {
-                m_Emulator->Update();
-                GameBoyWindows::RenderGame();
-                time2 = current;
-            }
-        }
-        else
-        {
-            GameBoyWindows::RenderGame();
-        }
-    }
-}
-
-void GameBoyWindows::RenderGame()
-{
-    SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 255);
-    SDL_RenderClear(m_Renderer);
-    SDL_UpdateTexture(m_Texture, nullptr, m_Emulator->m_Gpu->m_Pixels.data(), SCREEN_WIDTH * 4);
-    SDL_RenderCopy(m_Renderer, m_Texture, nullptr, nullptr);
-    SDL_RenderPresent(m_Renderer);
-}
-
-void GameBoyWindows::HandleInput(SDL_Event& evt)
-{
-    if (evt.type == SDL_KEYDOWN)
-    {
-        switch (evt.key.keysym.sym)
-        {
-        case SDLK_a:
-            m_Emulator->m_JoyPad->PressButton(JOYPAD_A);
-            break;
-        case SDLK_b:
-            m_Emulator->m_JoyPad->PressButton(JOYPAD_B);
-            break;
-        case SDLK_RETURN:
-            m_Emulator->m_JoyPad->PressButton(JOYPAD_START);
-            break;
-        case SDLK_SPACE:
-            m_Emulator->m_JoyPad->PressButton(JOYPAD_SELECT);
-            break;
-        case SDLK_RIGHT:
-            m_Emulator->m_JoyPad->PressButton(JOYPAD_RIGHT);
-            break;
-        case SDLK_LEFT:
-            m_Emulator->m_JoyPad->PressButton(JOYPAD_LEFT);
-            break;
-        case SDLK_UP:
-            m_Emulator->m_JoyPad->PressButton(JOYPAD_UP);
-            break;
-        case SDLK_DOWN:
-            m_Emulator->m_JoyPad->PressButton(JOYPAD_DOWN);
-            break;
-        }
-    }
-    else if (evt.type == SDL_KEYUP)
-    {
-        switch (evt.key.keysym.sym)
-        {
-        case SDLK_a:
-            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_A);
-            break;
-        case SDLK_b:
-            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_B);
-            break;
-        case SDLK_RETURN:
-            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_START);
-            break;
-        case SDLK_SPACE:
-            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_SELECT);
-            break;
-        case SDLK_RIGHT:
-            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_RIGHT);
-            break;
-        case SDLK_LEFT:
-            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_LEFT);
-            break;
-        case SDLK_UP:
-            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_UP);
-            break;
-        case SDLK_DOWN:
-            m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_DOWN);
-            break;
-        }
-    }
+    PostQuitMessage(0);
 }
 #endif
 
 #ifdef NDEBUG
-int main(int argc, char *argv[])
+LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    std::srand(unsigned(std::time(nullptr)));
+    static GameBoyWindows gb;
 
+    switch (msg)
+    {
+    case WM_CREATE:
+    {
+        gb.Create(hWnd);
+
+        HMENU hMenuBar = CreateMenu();
+        HMENU hFile = CreatePopupMenu();
+        HMENU hHelp = CreatePopupMenu();
+
+        AppendMenu(hMenuBar, MF_POPUP, (UINT_PTR) hFile, "File");
+        AppendMenu(hMenuBar, MF_POPUP, (UINT_PTR) hHelp, "Help");
+
+        AppendMenu(hFile, MF_STRING, ID_LOAD_ROM, "Load ROM");
+        AppendMenu(hFile, MF_STRING, ID_RELOAD_ROM, "Reload ROM");
+        AppendMenu(hFile, MF_STRING, ID_EXIT, "Exit");
+
+        AppendMenu(hHelp, MF_STRING, ID_ABOUT, "About");
+
+        SetMenu(hWnd, hMenuBar);
+
+        gb.FixSize(); // resize because we just added the menubar
+        gb.Initialize();
+
+        break;
+    }
+    case WM_TIMER:
+    {
+        gb.Update();
+        InvalidateRect(hWnd, NULL, FALSE);
+        break;
+    }
+    case WM_PAINT:
+    {
+        gb.RenderGame();
+        break;
+    }
+    case WM_COMMAND:
+    {
+        switch (LOWORD(wParam))
+        {
+        case ID_LOAD_ROM:
+        {
+            OPENFILENAME ofn;
+            char szFileName[MAX_PATH] = "";
+            ZeroMemory(&ofn, sizeof(ofn));
+
+            ofn.lStructSize = sizeof(ofn);
+            ofn.hwndOwner = hWnd;
+            ofn.lpstrFilter = "ROM files (*.gb)\0*.gb\0";
+            ofn.lpstrFile = szFileName;
+            ofn.nMaxFile = MAX_PATH;
+            ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+            ofn.lpstrDefExt = "gb";
+
+            if(GetOpenFileName(&ofn))
+            {
+                gb.LoadROM(szFileName);
+
+                if(!SetTimer(hWnd, ID_TIMER, UPDATE_INTERVAL, NULL))
+                {
+                    MessageBox(hWnd, "Could not set timer!", "Error", MB_OK | MB_ICONEXCLAMATION);
+                    PostQuitMessage(1);
+                }
+            }
+            break;
+        }
+        case ID_RELOAD_ROM:
+        {
+            gb.ReloadROM();
+
+            if(!SetTimer(hWnd, ID_TIMER, UPDATE_INTERVAL, NULL))
+            {
+                MessageBox(hWnd, "Could not set timer!", "Error", MB_OK | MB_ICONEXCLAMATION);
+                PostQuitMessage(1);
+            }
+            break;
+        }
+        case ID_EXIT:
+        {
+            PostQuitMessage(0);
+            break;
+        }
+        case ID_ABOUT:
+        {
+            MessageBox(hWnd, TEXT("um..."), TEXT("About Noufu"), MB_ICONINFORMATION | MB_OK);
+            break;
+        }
+        }
+        break;
+    }
+    case WM_KEYDOWN:
+    {
+        gb.HandleKeyDown(wParam);
+        break;
+    }
+    case WM_KEYUP:
+    {
+        gb.HandleKeyUp(wParam);
+        break;
+    }
+    case WM_CLOSE:
+    {
+        gb.CleanUp();
+        KillTimer(hWnd, ID_TIMER);
+        DestroyWindow(hWnd);
+        break;
+    }
+    case WM_DESTROY:
+        gb.Destroy();
+        break;
+    default:
+        return DefWindowProc(hWnd, msg, wParam, lParam);
+    }
+
+    return 0;
+}
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+{
     loguru::init(__argc, __argv);
     loguru::add_file("emulation_log.txt", loguru::Append, loguru::Verbosity_MAX);
 
-    GameBoyWindows *gb = GameBoyWindows::CreateInstance();
-    gb->Initialize();
-    gb->DoEmulation();
+    std::srand(unsigned(std::time(nullptr)));
+    ConfigureEmulatorSettings();
 
-    // apparently, adding this line will slow down the shut down process...
-    // delete gb;
+    const TCHAR szClassName[] = TEXT("MyClass");
 
-    return 0;
+    WNDCLASS wc;
+    HWND hWnd;
+    MSG msg;
+
+    wc.style         = CS_HREDRAW | CS_VREDRAW;
+    wc.lpfnWndProc   = WndProc;
+    wc.cbClsExtra    = 0;
+    wc.cbWndExtra    = 0;
+    wc.hInstance     = hInstance;
+    wc.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
+    wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
+    wc.lpszMenuName  = NULL;
+    wc.lpszClassName = szClassName;
+    wc.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
+
+    if (!RegisterClass(&wc))
+    {
+        MessageBox(NULL, TEXT("Window Registration Failed!"), TEXT("Error!"),
+            MB_ICONEXCLAMATION | MB_OK);
+        return 0;
+    }
+
+    hWnd = CreateWindow(szClassName,
+        TEXT(EMULATOR_NAME.c_str()),
+        WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+        CW_USEDEFAULT, CW_USEDEFAULT, SCREEN_WIDTH * SCREEN_SCALE_FACTOR, SCREEN_HEIGHT * SCREEN_SCALE_FACTOR,
+        NULL, NULL, hInstance, NULL);
+
+    if (hWnd == NULL)
+    {
+        MessageBox(NULL, TEXT("Window Creation Failed!"), TEXT("Error!"),
+            MB_ICONEXCLAMATION | MB_OK);
+        return 0;
+    }
+
+    ShowWindow(hWnd, nCmdShow);
+    UpdateWindow(hWnd);
+
+    while (GetMessage(&msg, NULL, 0, 0))
+    {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    return (int) msg.wParam;
 }
 #else
 int main(int argc, char *argv[])
