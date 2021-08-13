@@ -725,7 +725,6 @@ int SCREEN_SCALE_FACTOR;
 bool ENABLE_BOOT_ROM;
 std::string BOOT_ROM_PATH;
 
-// TODO create a config file with default settings if there are none
 void ConfigureEmulatorSettings()
 {
     std::ifstream istream(CONFIG_FILE_PATH, std::ios::in);
@@ -734,7 +733,22 @@ void ConfigureEmulatorSettings()
 
     if (!istream)
     {
-        throw std::system_error(errno, std::system_category(), "failed to open " + CONFIG_FILE_PATH);
+#ifdef GUI_MODE
+        LOG_F(INFO, "config is not found, creating one with default settings...");
+#else
+        fout << "config is not found, creating one with default settings..." << std::endl;
+#endif
+        SCREEN_SCALE_FACTOR = 3;
+        ENABLE_BOOT_ROM = false;
+        BOOT_ROM_PATH = "";
+
+        std::ofstream config(CONFIG_FILE_PATH);
+        config << "SCREEN_SCALE_FACTOR=" << SCREEN_SCALE_FACTOR << std::endl;
+        config << "ENABLE_BOOT_ROM=" << ENABLE_BOOT_ROM << std::endl;
+        config << "BOOT_ROM_PATH=" << BOOT_ROM_PATH << std::endl;
+        config.close();
+
+        return;
     }
 
     std::getline(istream, line);
