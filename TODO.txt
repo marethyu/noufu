@@ -33,3 +33,4 @@ msgbox err msgs
 stop emulation
 keyboard shortcuts for menubar items
 no sdl option
+friend classes
