@@ -1,4 +1,3 @@
-ppu implementation
 change title depending on cartridge label
 pass other blaarg tests
 sound
@@ -7,14 +6,12 @@ debug window
 save state
 double speed mode
 pause emulation
-code refactoring
-organize files
 battery
 mbcs
 ppu fifo
 custom startup logo
 icon
-options 4 shades of colour (green, grey, violet)
+other colours (green, grey, violet, etc.)
 gb color emulation
 screenshot feature
 config file more options (debug mode on/off, what shade of color, cgb mode on/off, input settings, lcd display size)
