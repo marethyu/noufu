@@ -4,3 +4,5 @@
 !/bin/gui/.gitkeep
 /bin/cli/*
 !/bin/cli/.gitkeep
+/obj/*
+!obj/.gitkeep

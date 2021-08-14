@@ -1,12 +1,9 @@
 Noufu devdoc
 
-GUI compile: g++ main.cpp loguru.cpp -o bin/main.exe -D GUI_MODE -std=c++14 -lSDL2 -lcomdlg32 -mwindows -Wl,-subsystem,windows --machine-windows
-CLI compile: g++ main.cpp -o bin/main
-
 Stage 1: Pass Blargg's CPU tests (complete)
-Stage 2: Refactor code (make seperate files for each class) and implement PPU to run Boot rom (don't forgot to make a Makefile)
+Stage 2: Refactor code (make seperate files for each class) and implement PPU to run Boot rom (don't forgot to make a Makefile) (complete)
 Stage 3: Pass other Blargg's tests (mem_timing.gb, mem_timing2.gb, halt_bug.gb)
-Stage 4: Make sure it can run Tetris without problems
+Stage 4: Make sure it can run Tetris without problems (complete)
 Stage 5: Implement a seperate class for cartridge with basic MBC support and make sure it can run Mario
 
 debug cmds:
@@ -32,7 +29,7 @@ load-state fname - load current emulator state from fname
 notes: both addr and v are hex
 
 emulator modes (TODO):
-- gui - win32 + sdl2 with logging system
+- gui - win32 + sdl2 with logging system (complete)
 - cli - cli debugger with sdl windows (view current screen state, vram/oam state, etc.)
 
 TODO: implement MBC (make cartridge class)

@@ -1,0 +1,8 @@
+#ifndef _CONSTANTS_H_
+#define _CONSTANTS_H_
+
+#define SCREEN_WIDTH 160
+#define SCREEN_HEIGHT 144
+#define SCREEN_SCALE_FACTOR 3
+
+#endif
