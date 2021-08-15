@@ -20,7 +20,6 @@ GameBoyWindows::~GameBoyWindows()
 
 void GameBoyWindows::Initialize()
 {
-    m_Emulator->InitComponents();
     GameBoyWindows::LogSystemInfo();
 }
 

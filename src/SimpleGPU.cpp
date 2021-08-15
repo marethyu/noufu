@@ -333,6 +333,7 @@ SimpleGPU::SimpleGPU(Emulator *emu)
     WX(emu->m_MemControl->m_IO[0x4B])
 {
     m_Emulator = emu;
+    std::fill(m_Pixels.begin(), m_Pixels.end(), 0);
 }
 
 SimpleGPU::~SimpleGPU()

@@ -42,7 +42,7 @@ void Emulator::InitComponents()
 
 void Emulator::ResetComponents()
 {
-    m_EmulatorLogger->DoLog(LOG_INFO, "Emulator::ResetComponents", "--EMULATOR LOGGING STARTED--");
+    m_EmulatorLogger->DoLog(LOG_INFO, "Emulator::ResetComponents", "--EMULATOR LOGGING RESTARTED--");
     m_CPU->Reset();
     m_IntManager->Reset();
     m_Timer->Reset();
