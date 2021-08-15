@@ -6,7 +6,6 @@
 #include "Emulator.h"
 
 #define FMT_HEADER_ONLY
-
 #include "fmt/format.h"
 
 const uint8_t int_vectors[5] = {

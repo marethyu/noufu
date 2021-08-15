@@ -5,7 +5,6 @@
 #include "JoyPad.h"
 
 #define FMT_HEADER_ONLY
-
 #include "fmt/format.h"
 
 JoyPad::JoyPad(Emulator *emu) : P1(emu->m_MemControl->m_IO[0x00])

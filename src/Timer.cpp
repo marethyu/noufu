@@ -5,7 +5,6 @@
 #include "Timer.h"
 
 #define FMT_HEADER_ONLY
-
 #include "fmt/format.h"
 
 Timer::Timer(Emulator *emu)

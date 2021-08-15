@@ -5,7 +5,6 @@
 #include <string>
 
 #define FMT_HEADER_ONLY
-
 #include "fmt/format.h"
 
 typedef enum Severity
