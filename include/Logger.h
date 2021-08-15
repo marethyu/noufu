@@ -2,6 +2,7 @@
 #define _LOGGER_H_
 
 #include <fstream>
+#include <stdexcept>
 #include <string>
 
 #define FMT_HEADER_ONLY
@@ -26,6 +27,13 @@ public:
     Logger(const std::string &log_file)
     {
         fout.open(log_file, std::ofstream::out | std::ofstream::trunc);
+
+        if (!fout.is_open())
+        {
+            throw std::runtime_error("Logger::Logger: Unable to create a file for logging!");
+        }
+
+        Logger::DoLog(LOG_INFO, "Logger::Logger", "{} created!", log_file);
     }
 
     ~Logger()
