@@ -19,6 +19,10 @@ private:
     SDL_Renderer *m_Renderer;
     SDL_Texture *m_Texture;
 
+    BITMAPINFO info;
+
+    bool bUseSDL;
+
     void LogSystemInfo();
 public:
     GameBoyWindows();
@@ -31,7 +35,7 @@ public:
     bool Create(HWND);
     void FixSize();
     void Update();
-    void RenderGraphics();
+    void RenderGraphics(HWND hWnd);
     void HandleKeyDown(WPARAM wParam);
     void HandleKeyUp(WPARAM wParam);
     void CleanUp();

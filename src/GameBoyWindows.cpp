@@ -4,12 +4,13 @@
 void GameBoyWindows::LogSystemInfo()
 {
     m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "GameBoyWindows::LogSystemInfo", "Operating system: Windows");
-    m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "GameBoyWindows::LogSystemInfo", "Renderer: SDL");
+    m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "GameBoyWindows::LogSystemInfo", "Renderer: {}", bUseSDL ? "SDL" : "GDI");
 }
 
 GameBoyWindows::GameBoyWindows()
 {
     m_Emulator = std::make_unique<Emulator>();
+    bUseSDL = m_Emulator->m_Config->GetValue("UseSDL") == "1";
 }
 
 GameBoyWindows::~GameBoyWindows()
@@ -37,6 +38,22 @@ void GameBoyWindows::ReloadROM()
 
 bool GameBoyWindows::Create(HWND hWnd)
 {
+    if (!bUseSDL)
+    {
+        info.bmiHeader.biSize = sizeof(info.bmiHeader);
+        info.bmiHeader.biWidth = SCREEN_WIDTH;
+        info.bmiHeader.biHeight = SCREEN_HEIGHT;
+        info.bmiHeader.biPlanes = 1;
+        info.bmiHeader.biBitCount = 32;
+        info.bmiHeader.biCompression = BI_RGB;
+        info.bmiHeader.biSizeImage = 0;
+        info.bmiHeader.biXPelsPerMeter = 0;
+        info.bmiHeader.biYPelsPerMeter = 0;
+        info.bmiHeader.biClrUsed = 0;
+        info.bmiHeader.biClrImportant = 0;
+        return true;
+    }
+
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
         m_Emulator->m_EmulatorLogger->DoLog(LOG_ERROR, "GameBoyWindows::Create", "[SDL Error] Couldn't initialize SDL: {}", SDL_GetError());
@@ -69,7 +86,10 @@ bool GameBoyWindows::Create(HWND hWnd)
 
 void GameBoyWindows::FixSize()
 {
-    SDL_SetWindowSize(m_Window, SCREEN_WIDTH * SCREEN_SCALE_FACTOR, SCREEN_HEIGHT * SCREEN_SCALE_FACTOR);
+    if (bUseSDL)
+    {
+        SDL_SetWindowSize(m_Window, SCREEN_WIDTH * SCREEN_SCALE_FACTOR, SCREEN_HEIGHT * SCREEN_SCALE_FACTOR);
+    }
 }
 
 void GameBoyWindows::Update()
@@ -77,13 +97,42 @@ void GameBoyWindows::Update()
     m_Emulator->Update();
 }
 
-void GameBoyWindows::RenderGraphics()
+void GameBoyWindows::RenderGraphics(HWND hWnd)
 {
-    SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 255);
-    SDL_RenderClear(m_Renderer);
-    SDL_UpdateTexture(m_Texture, nullptr, m_Emulator->m_GPU->m_Pixels.data(), SCREEN_WIDTH * 4);
-    SDL_RenderCopy(m_Renderer, m_Texture, nullptr, nullptr);
-    SDL_RenderPresent(m_Renderer);
+    if (bUseSDL)
+    {
+        SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 255);
+        SDL_RenderClear(m_Renderer);
+        SDL_UpdateTexture(m_Texture, nullptr, m_Emulator->m_GPU->m_Pixels.data(), SCREEN_WIDTH * 4);
+        SDL_RenderCopy(m_Renderer, m_Texture, nullptr, nullptr);
+        SDL_RenderPresent(m_Renderer);
+        return;
+    }
+
+    RECT rcClient;
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hWnd, &ps);
+
+    GetClientRect(hWnd, &rcClient);
+
+    int width = rcClient.right - rcClient.left;
+    int height = rcClient.bottom - rcClient.top;
+
+    StretchDIBits(hdc,
+                  0,
+                  height,
+                  width,
+                  -height,
+                  0,
+                  0,
+                  SCREEN_WIDTH,
+                  SCREEN_HEIGHT,
+                  m_Emulator->m_GPU->m_Pixels.data(),
+                  &info,
+                  DIB_RGB_COLORS,
+                  SRCCOPY);
+
+    EndPaint(hWnd, &ps);
 }
 
 void GameBoyWindows::HandleKeyDown(WPARAM wParam)
@@ -152,16 +201,22 @@ void GameBoyWindows::CleanUp()
 {
     m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "GameBoyWindows::CleanUp", "Cleaning up resources...");
 
-    SDL_DestroyTexture(m_Texture);
-    m_Texture = nullptr;
+    if (bUseSDL)
+    {
+        SDL_DestroyTexture(m_Texture);
+        m_Texture = nullptr;
 
-    SDL_DestroyRenderer(m_Renderer);
-    m_Renderer = nullptr;
+        SDL_DestroyRenderer(m_Renderer);
+        m_Renderer = nullptr;
 
-    SDL_DestroyWindow(m_Window);
-    m_Window = nullptr;
+        SDL_DestroyWindow(m_Window);
+        m_Window = nullptr;
 
-    SDL_Quit();
+        SDL_Quit();
+        return;
+    }
+
+    // TODO clean bitmapinfo?
 }
 
 void GameBoyWindows::Destroy()

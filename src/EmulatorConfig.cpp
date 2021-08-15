@@ -52,4 +52,5 @@ void EmulatorConfig::DefaultSettings()
     m_Settings["UseBootROM"] = "0";
     m_Settings["BootROMPath"] = "";
     m_Settings["CPULogging"] = "0";
+    m_Settings["UseSDL"] = "1";
 }

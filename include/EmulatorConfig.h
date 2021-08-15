@@ -16,8 +16,8 @@ private:
     // Available settings:
     // - UseBootROM
     // - BootROMPath
-    // - EmulatorLogging
     // - CPULogging
+    // - UseSDL
     std::map<std::string, std::string> m_Settings;
 
     void DefaultSettings();

@@ -57,7 +57,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     case WM_PAINT:
     {
-        gb.RenderGraphics();
+        gb.RenderGraphics(hWnd);
         break;
     }
     case WM_COMMAND:
@@ -143,7 +143,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    std::srand(unsigned(std::time(nullptr)));
+    std::srand(unsigned(std::time(NULL)));
 
     const TCHAR szClassName[] = TEXT("MyClass");
 
