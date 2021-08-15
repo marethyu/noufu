@@ -1,5 +1,4 @@
 /ROMS/*
-!ROMS/.gitkeep
 /bin/gui/*
 !/bin/gui/.gitkeep
 /bin/cli/*
