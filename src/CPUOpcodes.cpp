@@ -320,11 +320,6 @@ void CPU::HandlePrefixCB()
         CPU::WriteByte(HL, hl);
         break;
     }
-    default:
-    {
-        m_Emulator->m_EmulatorLogger->DoLog(LOG_ERROR, "CPU::HandlePrefixCB", "Unknown opcode: ${0:02X}", opcode);
-        throw std::runtime_error("Opcode unimplemented!");
-    }
     }
 }
 
