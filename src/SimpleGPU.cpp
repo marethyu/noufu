@@ -4,7 +4,10 @@
 #include "BitMagic.h"
 #include "Emulator.h"
 #include "SimpleGPU.h"
-#include "Util.h"
+
+#define FMT_HEADER_ONLY
+
+#include "fmt/format.h"
 
 const int DOTS_PER_SCANLINE = 456;
 
@@ -184,7 +187,7 @@ void SimpleGPU::RenderBackground()
         int bit = 7 - (xPos % 8); // bit position in data1 and data2 (because pixel 0 corresponds to bit 7 and pixel 1 corresponds to bit 6 and so on)
         int colourNum = (GET_BIT(data2, bit) << 1) | GET_BIT(data1, bit);
 
-        SimpleGPU::RenderPixel(LY, pixel, SimpleGPU::GetColour(colourNum, 0xFF47), -1);
+        SimpleGPU::RenderPixel(LY, pixel, SimpleGPU::GetColour(colourNum, BGP), -1);
     }
 }
 
@@ -234,7 +237,7 @@ void SimpleGPU::RenderSprites()
                 }
 
                 int colourNum = (GET_BIT(data2, bit) << 1) | GET_BIT(data1, bit);
-                rgb_tuple col = SimpleGPU::GetColour(colourNum, TEST_BIT(attributes, 4) ? 0xFF49 : 0xFF48);
+                rgb_tuple col = SimpleGPU::GetColour(colourNum, TEST_BIT(attributes, 4) ? OBP1 : OBP0);
 
                 // it's transparent for sprites
                 if (col.r == gb_colours[SHADE0].r && col.g == gb_colours[SHADE0].g && col.b == gb_colours[SHADE0].b)
@@ -275,9 +278,8 @@ void SimpleGPU::RenderPixel(int row, int col, rgb_tuple colour, int attr)
     m_Pixels[offset + 3] = 255;
 }
 
-rgb_tuple SimpleGPU::GetColour(int colourNum, uint16_t address)
+rgb_tuple SimpleGPU::GetColour(int colourNum, uint8_t palette)
 {
-    uint8_t palette = m_Emulator->m_MemControl->ReadByte(address);
     int hi, lo;
 
     switch (colourNum)
@@ -300,7 +302,22 @@ rgb_tuple SimpleGPU::GetColour(int colourNum, uint16_t address)
         break;
     }
 
-    return gb_colours[(GET_BIT(palette, hi) << 1) | GET_BIT(palette, lo)];
+    return gb_colours[SimpleGPU::GetValue(palette, hi, lo)];
+}
+
+int SimpleGPU::GetValue(uint8_t palette, int hi, int lo)
+{
+    return (GET_BIT(palette, hi) << 1) | GET_BIT(palette, lo);
+}
+
+void SimpleGPU::PrintPalette(uint8_t palette)
+{
+    std::cout << fmt::format("Info for palette ${0:04X}:", palette) << std::endl;
+    std::cout << fmt::format("Bit 1-0 - ", SimpleGPU::GetValue(palette, 1, 0)) << std::endl;
+    std::cout << fmt::format("Bit 3-2 - ", SimpleGPU::GetValue(palette, 3, 2)) << std::endl;
+    std::cout << fmt::format("Bit 5-4 - ", SimpleGPU::GetValue(palette, 5, 4)) << std::endl;
+    std::cout << fmt::format("Bit 7-6 - ", SimpleGPU::GetValue(palette, 7, 6)) << std::endl;
+    std::cout << std::endl;
 }
 
 SimpleGPU::SimpleGPU(Emulator *emu)
@@ -391,6 +408,19 @@ int SimpleGPU::GetMode()
 void SimpleGPU::Debug_PrintStatus()
 {
     std::cout << "*GPU STATUS*" << std::endl;
-    // TODO
+    std::cout << fmt::format("LCDC={0:08b}b", LCDC) << std::endl;
+    std::cout << fmt::format("LCDEnable={:d} WindowEnable={:d} SpriteEnable={:d} BGAndWindowEnable={:d}",
+                             SimpleGPU::bLCDEnabled(),
+                             SimpleGPU::bWindowEnable(),
+                             SimpleGPU::bSpriteEnable(),
+                             SimpleGPU::bBGAndWindowEnable()) << std::endl;
+    std::cout << fmt::format("STAT={0:08b}b", STAT) << std::endl;
+    std::cout << fmt::format("WX={0:d} WY={0:d}", WX, WY) << std::endl;
+    std::cout << fmt::format("SCX={0:d} SCY={0:d}", SCX, SCY) << std::endl;
+    std::cout << fmt::format("LY={0:d} LYC={0:d}", LY, LYC) << std::endl;
     std::cout << std::endl;
+
+    SimpleGPU::PrintPalette(BGP);
+    SimpleGPU::PrintPalette(OBP0);
+    SimpleGPU::PrintPalette(OBP1);
 }

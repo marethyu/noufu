@@ -4,8 +4,6 @@
 #include "Constants.h"
 #include "GameBoyWindows.h"
 
-#include "loguru.hpp"
-
 #define ID_LOAD_ROM 0
 #define ID_RELOAD_ROM 1
 #define ID_EXIT 2
@@ -26,7 +24,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
     case WM_CREATE:
     {
-        gb.Create(hWnd);
+        if (!gb.Create(hWnd))
+        {
+            DestroyWindow(hWnd);
+        }
 
         HMENU hMenuBar = CreateMenu();
         HMENU hFile = CreatePopupMenu();
@@ -142,9 +143,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    loguru::init(__argc, __argv);
-    loguru::add_file("emulation_log.txt", loguru::Append, loguru::Verbosity_MAX);
-
     std::srand(unsigned(std::time(nullptr)));
 
     const TCHAR szClassName[] = TEXT("MyClass");

@@ -1,6 +1,8 @@
 #ifndef _CPU_H_
 #define _CPU_H_
 
+#include <memory>
+
 #include "GBComponent.h"
 
 const int FLAG_Z = 7;
@@ -43,6 +45,8 @@ private:
 
     Emulator *m_Emulator;
 
+    bool bLoggingEnabled;
+
     uint8_t ReadByte(uint16_t address) const;
     uint16_t ReadWord(uint16_t address) const;
     void WriteByte(uint16_t address, uint8_t data);
@@ -66,7 +70,7 @@ private:
     void ShiftBitsRight(uint8_t &n, bool logical=false);
     void HandlePrefixCB();
 public:
-    CPU(Emulator *emu);
+    CPU(Emulator *emu, bool enableLogging);
     ~CPU();
 
     void Init();
@@ -82,12 +86,10 @@ public:
     void Debug_EditRegister(int reg, int val, bool is8Bit);
     void Debug_EditFlag(int flag, int val);
 
-/*
     // https://github.com/wheremyfoodat/Gameboy-logs用
     // Format: [registers] (mem[pc] mem[pc+1] mem[pc+2] mem[pc+3])
     // Ex: A: 01 F: B0 B: 00 C: 13 D: 00 E: D8 H: 01 L: 4D SP: FFFE PC: 00:0100 (00 C3 13 02)
     void Debug_LogState();
-*/
 };
 
 #endif

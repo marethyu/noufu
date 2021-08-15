@@ -3,7 +3,10 @@
 #include "BitMagic.h"
 #include "Emulator.h"
 #include "Timer.h"
-#include "Util.h"
+
+#define FMT_HEADER_ONLY
+
+#include "fmt/format.h"
 
 Timer::Timer(Emulator *emu)
   : TIMA(emu->m_MemControl->m_IO[0x05]),
@@ -89,9 +92,9 @@ int Timer::ClockSelect()
 void Timer::Debug_PrintStatus()
 {
     std::cout << "*TIMER STATUS*" << std::endl;
-    std::cout << "DIV=" << int_to_hex(DIV, 4) << " "
-              << "TIMA=" << int_to_hex(+TIMA, 2) << " "
-              << "TMA=" << int_to_hex(+TMA, 2) << " "
-              << "TAC=" << int_to_bin8(TAC) << std::endl;
+    std::cout << fmt::format("DIV=${0:04X}", DIV) << std::endl;
+    std::cout << fmt::format("TIMA=${0:02X}", TIMA) << std::endl;
+    std::cout << fmt::format("TMA=${0:02X}", TMA) << std::endl;
+    std::cout << fmt::format("TAC={0:08b}b", TAC) << std::endl;
     std::cout << std::endl;
 }

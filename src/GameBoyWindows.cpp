@@ -1,8 +1,11 @@
 #include "Constants.h"
 #include "GameBoyWindows.h"
-#include "Util.h"
 
-#include "loguru.hpp"
+void GameBoyWindows::LogSystemInfo()
+{
+    m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "GameBoyWindows::LogSystemInfo", "Operating system: Windows");
+    m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "GameBoyWindows::LogSystemInfo", "Renderer: SDL");
+}
 
 GameBoyWindows::GameBoyWindows()
 {
@@ -17,50 +20,51 @@ GameBoyWindows::~GameBoyWindows()
 void GameBoyWindows::Initialize()
 {
     m_Emulator->InitComponents();
+    GameBoyWindows::LogSystemInfo();
 }
 
 void GameBoyWindows::LoadROM(const std::string& rom_file)
 {
     m_Emulator->InitComponents();
     m_Emulator->m_MemControl->LoadROM(rom_file);
-    LOG_F(INFO, "Loaded %s", rom_file.c_str());
 }
 
 void GameBoyWindows::ReloadROM()
 {
     m_Emulator->InitComponents();
     m_Emulator->m_MemControl->ReloadROM();
-    LOG_F(INFO, "Current ROM reloaded");
 }
 
-void GameBoyWindows::Create(HWND hWnd)
+bool GameBoyWindows::Create(HWND hWnd)
 {
     if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
     {
-        PopMessageBox(TEXT("SDL Error"), MB_OK | MB_ICONERROR, "Couldn't initialize SDL: %s", SDL_GetError());
-        std::exit(1);
+        m_Emulator->m_EmulatorLogger->DoLog(LOG_ERROR, "GameBoyWindows::Create", "[SDL Error] Couldn't initialize SDL: {}", SDL_GetError());
+        return false;
     }
 
     m_Window = SDL_CreateWindowFrom(hWnd);
     if (m_Window == nullptr)
     {
-        PopMessageBox(TEXT("SDL Error"), MB_OK | MB_ICONERROR, "Couldn't create window: %s", SDL_GetError());
-        std::exit(1);
+        m_Emulator->m_EmulatorLogger->DoLog(LOG_ERROR, "GameBoyWindows::Create", "[SDL Error] Couldn't create window: {}", SDL_GetError());
+        return false;
     }
 
     m_Renderer = SDL_CreateRenderer(m_Window, -1, SDL_RENDERER_ACCELERATED);
     if (m_Renderer == nullptr)
     {
-        PopMessageBox(TEXT("SDL Error"), MB_OK | MB_ICONERROR, "Couldn't create renderer: %s", SDL_GetError());
-        std::exit(1);
+        m_Emulator->m_EmulatorLogger->DoLog(LOG_ERROR, "GameBoyWindows::Create", "[SDL Error] Couldn't create renderer: {}", SDL_GetError());
+        return false;
     }
 
     m_Texture = SDL_CreateTexture(m_Renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
     if (m_Texture == nullptr)
     {
-        PopMessageBox(TEXT("SDL Error"), MB_OK | MB_ICONERROR, "Couldn't create texture: %s", SDL_GetError());
-        std::exit(1);
+        m_Emulator->m_EmulatorLogger->DoLog(LOG_ERROR, "GameBoyWindows::Create", "[SDL Error] Couldn't create texture: {}", SDL_GetError());
+        return false;
     }
+
+    return true;
 }
 
 void GameBoyWindows::FixSize()
@@ -146,6 +150,8 @@ void GameBoyWindows::HandleKeyUp(WPARAM wParam)
 
 void GameBoyWindows::CleanUp()
 {
+    m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "GameBoyWindows::CleanUp", "Cleaning up resources...");
+
     SDL_DestroyTexture(m_Texture);
     m_Texture = nullptr;
 

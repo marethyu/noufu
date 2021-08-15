@@ -1,12 +1,13 @@
 #include <iostream>
 
-#include <cstdio>
-
 #include "BitMagic.h"
 #include "CPU.h"
+#include "CPUDebugInfo.h"
 #include "Emulator.h"
-#include "OpcodeInfo.h"
-#include "Util.h"
+
+#define FMT_HEADER_ONLY
+
+#include "fmt/format.h"
 
 const uint8_t int_vectors[5] = {
     0x40,
@@ -16,9 +17,10 @@ const uint8_t int_vectors[5] = {
     0x60
 };
 
-CPU::CPU(Emulator *emu)
+CPU::CPU(Emulator *emu, bool enableLogging)
 {
     m_Emulator = emu;
+    bLoggingEnabled = enableLogging;
 }
 
 CPU::~CPU()
@@ -79,27 +81,28 @@ void CPU::Debug_PrintStatus()
 {
     std::cout << "*CPU STATUS*" << std::endl;
     std::cout << "8-bit registers:" << std::endl;
-    std::cout << "A(7)=" << int_to_hex(+reg8[7], 2) << std::endl;
-    std::cout << "B(1)=" << int_to_hex(+reg8[1], 2) << std::endl;
-    std::cout << "C(0)=" << int_to_hex(+reg8[0], 2) << std::endl;
-    std::cout << "D(3)=" << int_to_hex(+reg8[3], 2) << std::endl;
-    std::cout << "E(2)=" << int_to_hex(+reg8[2], 2) << std::endl;
-    std::cout << "H(5)=" << int_to_hex(+reg8[5], 2) << std::endl;
-    std::cout << "L(4)=" << int_to_hex(+reg8[4], 2) << std::endl;
+    std::cout << fmt::format("A(7)=${0:02X}", reg8[7]) << std::endl;
+    std::cout << fmt::format("B(1)=${0:02X}", reg8[1]) << std::endl;
+    std::cout << fmt::format("C(0)=${0:02X}", reg8[0]) << std::endl;
+    std::cout << fmt::format("D(3)=${0:02X}", reg8[3]) << std::endl;
+    std::cout << fmt::format("E(2)=${0:02X}", reg8[2]) << std::endl;
+    std::cout << fmt::format("H(5)=${0:02X}", reg8[5]) << std::endl;
+    std::cout << fmt::format("L(4)=${0:02X}", reg8[4]) << std::endl;
     std::cout << std::endl;
     std::cout << "Flags:" << std::endl;
-    std::cout << "Z(7)=" << CPU::IsFlagSet(FLAG_Z) << " "
-              << "N(6)=" << CPU::IsFlagSet(FLAG_N) << " "
-              << "H(5)=" << CPU::IsFlagSet(FLAG_H) << " "
-              << "C(4)=" << CPU::IsFlagSet(FLAG_C) << std::endl;
+    std::cout << fmt::format("Z(7)={:d} N(6)={:d} H(5)={:d} C(4)={:d}",
+                             CPU::IsFlagSet(FLAG_Z),
+                             CPU::IsFlagSet(FLAG_N),
+                             CPU::IsFlagSet(FLAG_H),
+                             CPU::IsFlagSet(FLAG_C)) << std::endl;
     std::cout << std::endl;
     std::cout << "16-bit registers:" << std::endl;
-    std::cout << "AF(3)=" << int_to_hex(reg16[3], 4) << std::endl;
-    std::cout << "BC(0)=" << int_to_hex(reg16[0], 4) << std::endl;
-    std::cout << "DE(1)=" << int_to_hex(reg16[1], 4) << std::endl;
-    std::cout << "HL(2)=" << int_to_hex(HL, 4) << std::endl;
-    std::cout << "SP(4)=" << int_to_hex(SP, 4) << std::endl;
-    std::cout << "PC(5)=" << int_to_hex(PC, 4) << std::endl;
+    std::cout << fmt::format("AF(3)=${0:04X}", reg16[3]) << std::endl;
+    std::cout << fmt::format("BC(0)=${0:04X}", reg16[0]) << std::endl;
+    std::cout << fmt::format("DE(1)=${0:04X}", reg16[1]) << std::endl;
+    std::cout << fmt::format("HL(2)=${0:04X}", reg16[2]) << std::endl;
+    std::cout << fmt::format("SP(4)=${0:04X}", reg16[4]) << std::endl;
+    std::cout << fmt::format("PC(5)=${0:04X}", reg16[5]) << std::endl;
     std::cout << std::endl;
 }
 
@@ -127,9 +130,8 @@ void CPU::Debug_PrintCurrentInstruction()
         break;
     }
 
-    printf("%s (%02X)\t", cb_prefixed ? "PREFIX_CB" : "NO_PREFIX", opcode);
-    printf(info.fmt_str.c_str(), arg);
-    printf("\n");
+    std::cout << fmt::format("{} ({0:02X})\t", cb_prefixed ? "PREFIX_CB" : "NO_PREFIX", opcode)
+              << fmt::format(info.fmt_str, arg) << std::endl;
 }
 
 void CPU::Debug_EditRegister(int reg, int val, bool is8Bit)
@@ -137,7 +139,7 @@ void CPU::Debug_EditRegister(int reg, int val, bool is8Bit)
     if (is8Bit)
     {
         reg8[reg] = (uint8_t) val;
-        std::cout << "the value of " << reg8_str[reg] << " is now set to " << val << std::endl;
+        std::cout << fmt::format("the value of {} is now set to {}", reg8_str[reg], val) << std::endl;
     }
     else
     {
@@ -150,34 +152,31 @@ void CPU::Debug_EditRegister(int reg, int val, bool is8Bit)
             reg16[reg] = (uint16_t) val;
         }
 
-        std::cout << "the value of " << reg16_str[reg] << " is now set to " << val << std::endl;
+        std::cout << fmt::format("the value of {} is now set to {}", reg16_str[reg], val) << std::endl;
     }
 }
 
 void CPU::Debug_EditFlag(int flag, int val)
 {
     CPU::ModifyFlag(flag, val);
-    std::cout << "flag " << flag_str[flag - 4] << " is now set to " << val << std::endl;
+    std::cout << fmt::format("flag {} is now set to {}", flag_str[flag - 4], val) << std::endl;
 }
 
-/*
 void CPU::Debug_LogState()
 {
-    fout << "A: " << int_to_hex(+A, 2, false) << " "
-         << "F: " << int_to_hex(+F, 2, false) << " "
-         << "B: " << int_to_hex(+reg8[1], 2, false) << " "
-         << "C: " << int_to_hex(+reg8[0], 2, false) << " "
-         << "D: " << int_to_hex(+reg8[3], 2, false) << " "
-         << "E: " << int_to_hex(+reg8[2], 2, false) << " "
-         << "H: " << int_to_hex(+reg8[5], 2, false) << " "
-         << "L: " << int_to_hex(+reg8[4], 2, false) << " "
-         << "SP: " << int_to_hex(SP, -1, false) << " "
-         << "PC: " << "00:" << int_to_hex(PC, -1, false) << " "
-         << "("
-         << int_to_hex(+m_Emulator->m_MemControl->ReadByte(PC), 2, false) << " "
-         << int_to_hex(+m_Emulator->m_MemControl->ReadByte(PC + 1), 2, false) << " "
-         << int_to_hex(+m_Emulator->m_MemControl->ReadByte(PC + 2), 2, false) << " "
-         << int_to_hex(+m_Emulator->m_MemControl->ReadByte(PC + 3), 2, false) << ")"
-         << std::endl;
+    m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "CPU", "A: {0:02X} F: {0:02X} B: {0:02X} C: {0:02X} D: {0:02X} E: {0:02X} H: {0:02X} L: {0:02X} SP: {0:04X} PC: {0:04X} ({0:02X} {0:02X} {0:02X} {0:02X})",
+                                        A,
+                                        F,
+                                        reg8[1],
+                                        reg8[0],
+                                        reg8[3],
+                                        reg8[2],
+                                        reg8[5],
+                                        reg8[4],
+                                        SP,
+                                        PC,
+                                        m_Emulator->m_MemControl->ReadByte(PC),
+                                        m_Emulator->m_MemControl->ReadByte(PC + 1),
+                                        m_Emulator->m_MemControl->ReadByte(PC + 2),
+                                        m_Emulator->m_MemControl->ReadByte(PC + 3));
 }
-*/

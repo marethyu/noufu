@@ -5,8 +5,18 @@ const int MAX_CYCLES = 70224; // 154 scanlines * 456 cycles per frame = 70224
 
 Emulator::Emulator()
 {
-    m_Config = std::make_unique<EmulatorConfig>();
-    m_CPU = std::make_unique<CPU>(this);
+    m_EmulatorLogger = std::make_unique<Logger>("emulation_log.txt");
+
+    bool bConfigFileExists = true;
+
+    m_Config = std::make_unique<EmulatorConfig>(bConfigFileExists);
+
+    if (!bConfigFileExists)
+    {
+        m_EmulatorLogger->DoLog(LOG_INFO, "Emulator::Emulator", "The configuration file was not found, so the new one created with default settings.");
+    }
+
+    m_CPU = std::make_unique<CPU>(this, m_Config->GetValue("CPULogging") == "1");
     m_MemControl = std::make_unique<MemoryController>(this);
     m_IntManager = std::make_unique<InterruptManager>(this);
     m_Timer = std::make_unique<Timer>(this);
@@ -21,6 +31,7 @@ Emulator::~Emulator()
 
 void Emulator::InitComponents()
 {
+    m_EmulatorLogger->DoLog(LOG_INFO, "Emulator::InitComponents", "--EMULATOR LOGGING STARTED--");
     m_CPU->Init();
     m_IntManager->Init();
     m_Timer->Init();
@@ -31,6 +42,7 @@ void Emulator::InitComponents()
 
 void Emulator::ResetComponents()
 {
+    m_EmulatorLogger->DoLog(LOG_INFO, "Emulator::ResetComponents", "--EMULATOR LOGGING STARTED--");
     m_CPU->Reset();
     m_IntManager->Reset();
     m_Timer->Reset();

@@ -33,7 +33,11 @@ private:
     void RenderSprites();
 
     void RenderPixel(int row, int col, rgb_tuple colour, int attr);
-    rgb_tuple GetColour(int colourNum, uint16_t address);
+
+    rgb_tuple GetColour(int colourNum, uint8_t palette);
+    int GetValue(uint8_t palette, int hi, int lo);
+
+    void PrintPalette(uint8_t palette);
 public:
     SimpleGPU(Emulator *emu);
     ~SimpleGPU();

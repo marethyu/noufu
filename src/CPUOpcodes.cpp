@@ -1,12 +1,8 @@
-#include <iostream>
 #include <stdexcept>
 
 #include "BitMagic.h"
 #include "CPU.h"
 #include "Emulator.h"
-#include "Util.h"
-
-#include "loguru.hpp"
 
 const int HL_add[] = {0, 0, 1, -1};
 const int RST_ADDR[] = {0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38};
@@ -326,14 +322,8 @@ void CPU::HandlePrefixCB()
     }
     default:
     {
-#ifndef GUI_MODE
-        std::cerr << "Opcode: " << int_to_hex(opcode) << std::endl;
-        CPU::Debug_PrintStatus();
-#else
-        LOG_IF_F(ERROR, true, "Unknown opcode: %02X", opcode);
-#endif
+        m_Emulator->m_EmulatorLogger->DoLog(LOG_ERROR, "CPU::HandlePrefixCB", "Unknown opcode: ${0:02X}", opcode);
         throw std::runtime_error("Opcode unimplemented!");
-        break;
     }
     }
 }
@@ -351,11 +341,10 @@ void CPU::Step()
 
     m_Emulator->m_IntManager->InterruptRoutine();
 
-/*
-#ifndef GUI_MODE
-    CPU::Debug_LogState();
-#endif
-*/
+    if (bLoggingEnabled)
+    {
+        CPU::Debug_LogState();
+    }
 
     if (bHalted)
     {
@@ -1036,14 +1025,8 @@ void CPU::Step()
     }
     default:
     {
-#ifndef GUI_MODE
-        std::cerr << "Opcode: " << int_to_hex(opcode) << std::endl;
-        CPU::Debug_PrintStatus();
-#else
-        LOG_IF_F(ERROR, true, "Unknown opcode: %02X", opcode);
-#endif
+        m_Emulator->m_EmulatorLogger->DoLog(LOG_ERROR, "CPU::Step", "Unknown opcode: ${0:02X}", opcode);
         throw std::runtime_error("Opcode unimplemented!");
-        break;
     }
     }
 

@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -D GUI_MODE -std=c++17 -Wall -fmax-errors=5
+CXXFLAGS = -std=c++2a -Wall -fmax-errors=5
 WIN_FLAGS = -mwindows -Wl,-subsystem,windows --machine-windows
 LINKFLAGS := -lSDL2 -lcomdlg32
 
@@ -11,7 +11,7 @@ OBJ_PATH := ./obj/
 INC_PATH := ./include/
 
 # TODO add ./bin/cli/noufu_cli.exe
-TARGET = ./bin/gui/noufu_gui.exe
+TARGET = ./bin/gui/noufu.exe
 
 OBJ1 := CPUOpcodes.o \
         CPU.o \
@@ -21,10 +21,8 @@ OBJ1 := CPUOpcodes.o \
         JoyPad.o \
         SimpleGPU.o \
         Emulator.o \
-        GameBoyWindows.o \
-        loguru.o \
         EmulatorConfig.o \
-        Util.o \
+        GameBoyWindows.o \
         WinMain.o
 OBJ := $(patsubst %,$(OBJ_PATH)%,$(OBJ1))
 
@@ -33,7 +31,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJ)
 	@echo [INFO] Creating Binary Executable [$(TARGET)]
-	@$(CXX) $(WIN_FLAGS) -o $@ $^ $(LINKFLAGS)
+	@$(CXX) -o $@ $^ $(WIN_FLAGS) $(LINKFLAGS)
 
 $(OBJ_PATH)%.o: $(SRC_PATH)%.cpp
 	@echo [CXX] $<
@@ -41,5 +39,5 @@ $(OBJ_PATH)%.o: $(SRC_PATH)%.cpp
 
 clean:
 	del /q obj\*.o
-	del /q bin\gui\noufu_gui.exe
+	del /q bin\gui\noufu.exe
 	del /q bin\cli\noufu_cli.exe

@@ -3,7 +3,10 @@
 #include "BitMagic.h"
 #include "Emulator.h"
 #include "JoyPad.h"
-#include "Util.h"
+
+#define FMT_HEADER_ONLY
+
+#include "fmt/format.h"
 
 JoyPad::JoyPad(Emulator *emu) : P1(emu->m_MemControl->m_IO[0x00])
 {
@@ -70,14 +73,15 @@ uint8_t JoyPad::ReadP1()
 void JoyPad::Debug_PrintStatus()
 {
     std::cout << "*JoyPad STATUS*" << std::endl;
-    std::cout << "P1=" << int_to_bin8(JoyPad::ReadP1()) << "\n"
-              << "Right=" << GET_BIT(joypad_state, JOYPAD_RIGHT) << " "
-              << "Left=" << GET_BIT(joypad_state, JOYPAD_LEFT) << " "
-              << "Up=" << GET_BIT(joypad_state, JOYPAD_UP) << " "
-              << "Down=" << GET_BIT(joypad_state, JOYPAD_DOWN) << " "
-              << "A=" << GET_BIT(joypad_state, JOYPAD_A) << " "
-              << "B=" << GET_BIT(joypad_state, JOYPAD_B) << " "
-              << "Select=" << GET_BIT(joypad_state, JOYPAD_SELECT) << " "
-              << "Start=" << GET_BIT(joypad_state, JOYPAD_START) << std::endl;
+    std::cout << fmt::format("P1={0:08b}b", JoyPad::ReadP1()) << std::endl;
+    std::cout << fmt::format("Right={:d} Left={:d} Up={:d} Down={:d} A={:d} B={:d} Select={:d} Start={:d}",
+                             !GET_BIT(joypad_state, JOYPAD_RIGHT),
+                             !GET_BIT(joypad_state, JOYPAD_LEFT),
+                             !GET_BIT(joypad_state, JOYPAD_UP),
+                             !GET_BIT(joypad_state, JOYPAD_DOWN),
+                             !GET_BIT(joypad_state, JOYPAD_A),
+                             !GET_BIT(joypad_state, JOYPAD_B),
+                             !GET_BIT(joypad_state, JOYPAD_SELECT),
+                             !GET_BIT(joypad_state, JOYPAD_START)) << std::endl;
     std::cout << std::endl;
 }

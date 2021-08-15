@@ -11,6 +11,7 @@
 #include "Timer.h"
 #include "SimpleGPU.h"
 #include "JoyPad.h"
+#include "Logger.h"
 
 class Emulator
 {
@@ -28,6 +29,7 @@ public:
     void Debug_PrintEmulatorStatus();
 
     std::unique_ptr<EmulatorConfig> m_Config;
+    std::unique_ptr<Logger> m_EmulatorLogger;
 
     // All components
     std::unique_ptr<CPU> m_CPU;

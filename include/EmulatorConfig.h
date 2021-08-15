@@ -7,7 +7,8 @@
 class EmulatorConfig
 {
 public:
-    EmulatorConfig();
+    // bConfigFileExists - used for logging purposes
+    EmulatorConfig(bool &bConfigFileExists);
     ~EmulatorConfig();
 
     std::string GetValue(const std::string& key);
@@ -15,7 +16,11 @@ private:
     // Available settings:
     // - UseBootROM
     // - BootROMPath
+    // - EmulatorLogging
+    // - CPULogging
     std::map<std::string, std::string> m_Settings;
+
+    void DefaultSettings();
 };
 
 #endif

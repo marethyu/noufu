@@ -3,9 +3,10 @@
 #include "BitMagic.h"
 #include "Emulator.h"
 #include "InterruptManager.h"
-#include "Util.h"
 
-#include "loguru.hpp"
+#define FMT_HEADER_ONLY
+
+#include "fmt/format.h"
 
 // For halt behaviour, please read section 4.10. in https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
 enum
@@ -75,13 +76,13 @@ bool InterruptManager::SetHaltMode()
         haltMode = HALT_MODE2;
         return false;
     }
-
+/*
 #ifndef GUI_MODE
     std::cerr << "Yo nigga, InterruptManager::SetHaltMode has gone mad!" << std::endl;
 #else
     LOG_IF_F(WARNING, true, "Yo nigga, InterruptManager::SetHaltMode has gone mad!");
 #endif
-
+*/
     return false;
 }
 
@@ -120,8 +121,8 @@ void InterruptManager::InterruptRoutine()
 void InterruptManager::Debug_PrintStatus()
 {
     std::cout << "*INTERRUPT MANAGER STATUS*" << std::endl;
-    std::cout << "IME=" << m_Emulator->m_IntManager->GetIME() << " "
-              << "IF=" << int_to_bin8(IF) << " "
-              << "IE=" << int_to_bin8(IE) << std::endl;
+    std::cout << fmt::format("IME={:d}", m_IME) << std::endl;
+    std::cout << fmt::format("IF={0:08b}b", IF) << std::endl;
+    std::cout << fmt::format("IE={0:08b}b", IE) << std::endl;
     std::cout << std::endl;
 }

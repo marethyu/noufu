@@ -18,6 +18,8 @@ private:
     SDL_Window *m_Window;
     SDL_Renderer *m_Renderer;
     SDL_Texture *m_Texture;
+
+    void LogSystemInfo();
 public:
     GameBoyWindows();
     ~GameBoyWindows();
@@ -26,7 +28,7 @@ public:
     void LoadROM(const std::string& rom_file);
     void ReloadROM();
 
-    void Create(HWND);
+    bool Create(HWND);
     void FixSize();
     void Update();
     void RenderGraphics();

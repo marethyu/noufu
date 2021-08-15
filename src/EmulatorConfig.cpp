@@ -3,22 +3,16 @@
 
 #include "EmulatorConfig.h"
 
-#include "loguru.hpp"
-
-EmulatorConfig::EmulatorConfig()
+EmulatorConfig::EmulatorConfig(bool &bConfigFileExists)
 {
     std::ifstream istream("config", std::ios::in);
     std::string line;
 
     if (!istream)
     {
-#ifdef GUI_MODE
-        LOG_F(INFO, "config is not found, creating one with default settings...");
-#else
-        /*fout << "config is not found, creating one with default settings..." << std::endl;*/
-#endif
-        m_Settings["UseBootROM"] = "0";
-        m_Settings["BootROMPath"] = "";
+        bConfigFileExists = false;
+
+        EmulatorConfig::DefaultSettings();
 
         std::ofstream config("config");
 
@@ -51,4 +45,11 @@ EmulatorConfig::~EmulatorConfig()
 std::string EmulatorConfig::GetValue(const std::string& key)
 {
     return m_Settings[key];
+}
+
+void EmulatorConfig::DefaultSettings()
+{
+    m_Settings["UseBootROM"] = "0";
+    m_Settings["BootROMPath"] = "";
+    m_Settings["CPULogging"] = "0";
 }
