@@ -166,7 +166,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
         case ID_ABOUT:
         {
-            MessageBox(hWnd, TEXT("um..."), TEXT("About Noufu"), MB_ICONINFORMATION | MB_OK);
+            MessageBox(hWnd, TEXT("i have no idea what to write here"), TEXT("About Noufu"), MB_ICONINFORMATION | MB_OK);
             break;
         }
         }
