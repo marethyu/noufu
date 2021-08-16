@@ -6,10 +6,11 @@
 
 #define ID_LOAD_ROM 0
 #define ID_RELOAD_ROM 1
-#define ID_STOP_EMULATION 2
-#define ID_CAPTURE_SCREEN 3
-#define ID_EXIT 4
-#define ID_ABOUT 5
+#define ID_PAUSE_RESUME_EMU 2
+#define ID_STOP_EMULATION 3
+#define ID_CAPTURE_SCREEN 4
+#define ID_EXIT 5
+#define ID_ABOUT 6
 
 #define ID_TIMER 1
 
@@ -20,6 +21,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     static GameBoyWindows gb;
     static HMENU hMenuBar;
+    static HMENU hFile, hHelp;
+    static bool paused;
 
     switch (msg)
     {
@@ -33,14 +36,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 #endif
         hMenuBar = CreateMenu();
 
-        HMENU hFile = CreatePopupMenu();
-        HMENU hHelp = CreatePopupMenu();
+        hFile = CreatePopupMenu();
+        hHelp = CreatePopupMenu();
 
         AppendMenu(hMenuBar, MF_POPUP, (UINT_PTR) hFile, "File");
         AppendMenu(hMenuBar, MF_POPUP, (UINT_PTR) hHelp, "Help");
 
         AppendMenu(hFile, MF_STRING, ID_LOAD_ROM, "Load ROM");
         AppendMenu(hFile, MF_STRING, ID_RELOAD_ROM, "Reload ROM");
+        AppendMenu(hFile, MF_STRING, ID_PAUSE_RESUME_EMU, "Pause emulation");
         AppendMenu(hFile, MF_STRING, ID_STOP_EMULATION, "Stop emulation");
         AppendMenu(hFile, MF_STRING, ID_CAPTURE_SCREEN, "Screenshot");
         AppendMenu(hFile, MF_STRING, ID_EXIT, "Exit");
@@ -50,17 +54,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         SetMenu(hWnd, hMenuBar);
 
         EnableMenuItem(hMenuBar, ID_RELOAD_ROM, MF_DISABLED | MF_GRAYED);
+        EnableMenuItem(hMenuBar, ID_PAUSE_RESUME_EMU, MF_DISABLED | MF_GRAYED);
         EnableMenuItem(hMenuBar, ID_STOP_EMULATION, MF_DISABLED | MF_GRAYED);
         EnableMenuItem(hMenuBar, ID_CAPTURE_SCREEN, MF_DISABLED | MF_GRAYED);
 
         gb.Initialize();
+        paused = false;
 
         break;
     }
     case WM_TIMER:
     {
-        gb.Update();
-        InvalidateRect(hWnd, NULL, FALSE);
+        if (!paused)
+        {
+            gb.Update();
+            InvalidateRect(hWnd, NULL, FALSE);
+        }
         break;
     }
     case WM_PAINT:
@@ -95,6 +104,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 gb.LoadROM(szFileName);
 
                 EnableMenuItem(hMenuBar, ID_RELOAD_ROM, MF_ENABLED);
+                EnableMenuItem(hMenuBar, ID_PAUSE_RESUME_EMU, MF_ENABLED);
                 EnableMenuItem(hMenuBar, ID_STOP_EMULATION, MF_ENABLED);
                 EnableMenuItem(hMenuBar, ID_CAPTURE_SCREEN, MF_ENABLED);
 
@@ -117,11 +127,26 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             }
             break;
         }
+        case ID_PAUSE_RESUME_EMU:
+        {
+            paused = !paused;
+
+            if (paused)
+            {
+                ModifyMenu(hFile, ID_PAUSE_RESUME_EMU, MF_STRING | MF_BYCOMMAND, ID_PAUSE_RESUME_EMU, "Resume emulation");
+            }
+            else
+            {
+                ModifyMenu(hFile, ID_PAUSE_RESUME_EMU, MF_STRING | MF_BYCOMMAND, ID_PAUSE_RESUME_EMU, "Pause emulation");
+            }
+            break;
+        }
         case ID_STOP_EMULATION:
         {
             gb.StopEmulation();
 
             EnableMenuItem(hMenuBar, ID_RELOAD_ROM, MF_DISABLED | MF_GRAYED);
+            EnableMenuItem(hMenuBar, ID_PAUSE_RESUME_EMU, MF_DISABLED | MF_GRAYED);
             EnableMenuItem(hMenuBar, ID_STOP_EMULATION, MF_DISABLED | MF_GRAYED);
             EnableMenuItem(hMenuBar, ID_CAPTURE_SCREEN, MF_DISABLED | MF_GRAYED);
 
