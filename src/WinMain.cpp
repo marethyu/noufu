@@ -184,7 +184,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     HWND hWnd;
     MSG msg;
     RECT rcClient;
-    UINT style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
+    UINT style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_VISIBLE;
 
     rcClient.left = 0;
     rcClient.top = 0;
