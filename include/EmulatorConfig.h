@@ -17,6 +17,10 @@ private:
     // - UseBootROM
     // - BootROMPath
     // - CPULogging
+    // - Color0
+    // - Color1
+    // - Color2
+    // - Color3
     std::map<std::string, std::string> m_Settings;
 
     void DefaultSettings();

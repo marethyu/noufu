@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iostream>
+#include <sstream>
 
 #include "BitMagic.h"
 #include "Emulator.h"
@@ -26,13 +27,19 @@ enum
     SHADE3
 };
 
-// TODO make it modificable by config file
-rgb_tuple gb_colours[4] = {
-    {224, 248, 208},
-    {136, 192, 112},
-    {52, 104, 86},
-    {8, 24, 32}
-};
+void SimpleGPU::InitRGBTuple(rgb_tuple &tup, const std::string &colour_info)
+{
+    std::istringstream ss(colour_info);
+    std::string token;
+
+    uint8_t *a[3] = {&tup.r, &tup.g, &tup.b};
+    int i = 0;
+
+    while(std::getline(ss, token, '.'))
+    {
+        *a[i++] = std::stoul(token, nullptr, 16);
+    }
+}
 
 bool SimpleGPU::bLCDEnabled()
 {
@@ -333,6 +340,10 @@ SimpleGPU::SimpleGPU(Emulator *emu)
     WX(emu->m_MemControl->m_IO[0x4B])
 {
     m_Emulator = emu;
+    InitRGBTuple(gb_colours[0], m_Emulator->m_Config->GetValue("Color0"));
+    InitRGBTuple(gb_colours[1], m_Emulator->m_Config->GetValue("Color1"));
+    InitRGBTuple(gb_colours[2], m_Emulator->m_Config->GetValue("Color2"));
+    InitRGBTuple(gb_colours[3], m_Emulator->m_Config->GetValue("Color3"));
     std::fill(m_Pixels.begin(), m_Pixels.end(), 0);
 }
 

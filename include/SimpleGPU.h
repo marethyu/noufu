@@ -2,6 +2,7 @@
 #define _SIMPLE_GPU_H_
 
 #include <array>
+#include <string>
 
 #include "Constants.h"
 #include "GBComponent.h"
@@ -18,7 +19,11 @@ class SimpleGPU : public GBComponent
 private:
     Emulator *m_Emulator;
 
+    rgb_tuple gb_colours[4]; // colour palette
+
     int m_Counter; // keep track of cycles in a current scanline
+
+    void InitRGBTuple(rgb_tuple &tup, const std::string &colour_info);
 
     // https://gbdev.io/pandocs/LCDC.html
     bool bLCDEnabled();
