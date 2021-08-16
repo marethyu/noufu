@@ -10,7 +10,7 @@ Requirements:
 - fmt v8.0.0 (preinstalled in `include/`)
 - SDL v2.0.12 (Optional)
 
-To build, type (remove `SDL=1` if you don't have SDL installed):
+To build, type (remove `SDL=1` if you don't have SDL installed)
 ```
 mingw32-make SDL=1
 ```
