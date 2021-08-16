@@ -29,7 +29,5 @@ implement more commands for debugging cli
 fix all TODOs
 opengl
 video recording (to gif)
-msgbox err msgs
-stop emulation
 keyboard shortcuts for menubar items
 friend classes
