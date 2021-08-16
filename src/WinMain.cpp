@@ -122,7 +122,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
         case ID_EXIT:
         {
-            PostQuitMessage(0);
+            DestroyWindow(hWnd);
             break;
         }
         case ID_ABOUT:
@@ -145,12 +145,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     case WM_CLOSE:
     {
-        gb.CleanUp();
-        KillTimer(hWnd, ID_TIMER);
         DestroyWindow(hWnd);
         break;
     }
     case WM_DESTROY:
+        gb.CleanUp();
+        KillTimer(hWnd, ID_TIMER);
         gb.Destroy();
         break;
     default:
