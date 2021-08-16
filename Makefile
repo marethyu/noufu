@@ -24,9 +24,6 @@ else
  SDL=0
 endif
 
-$(info SDL=$(SDL))
-$(info TARGET=$(TARGET))
-
 OBJ1 := CPUOpcodes.o \
         CPU.o \
         InterruptManager.o \
