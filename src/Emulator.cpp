@@ -73,9 +73,20 @@ void Emulator::SetCapture(CaptureFunc capture)
     Capture = capture;
 }
 
-void Emulator::CaptureScreen(const std::string &fname)
+int Emulator::CaptureScreen(const std::string &fname)
 {
-    Capture(m_GPU->m_Pixels, fname);
+    int ret = Capture(m_GPU->m_Pixels, fname);
+
+    if (ret)
+    {
+        m_EmulatorLogger->DoLog(LOG_INFO, "Emulator::CaptureScreen", "Screenshot saved (file={})", fname);
+    }
+    else
+    {
+        m_EmulatorLogger->DoLog(LOG_WARN_POPUP, "Emulator::CaptureScreen", "Unable to save a screenshot");
+    }
+
+    return ret;
 }
 
 void Emulator::Debug_Step(std::vector<char> &blargg_serial, int times)

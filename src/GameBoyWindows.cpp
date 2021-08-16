@@ -17,7 +17,7 @@ static void MyMessageBox(Severity severity, const char *message)
 
 // Save the bitmap to a bmp file
 // From https://www.technical-recipes.com/2011/creating-bitmap-files-from-raw-pixel-data-in-c/
-static void SaveBitmapToFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> &pixels, const std::string &fname)
+static int SaveBitmapToFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> &pixels, const std::string &fname)
 {
     // Some basic bitmap parameters
     unsigned long headers_size = sizeof(BITMAPFILEHEADER) +
@@ -83,7 +83,7 @@ static void SaveBitmapToFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEI
                               NULL);
 
     // Return if error opening file
-    if(!hFile) return;
+    if(!hFile) return 0;
 
     DWORD dwWritten = 0;
 
@@ -128,6 +128,8 @@ static void SaveBitmapToFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEI
 
     // Close the file handle
     CloseHandle(hFile);
+
+    return 1;
 }
 
 void GameBoyWindows::LogSystemInfo()
@@ -195,9 +197,8 @@ void GameBoyWindows::StopEmulation()
 
 void GameBoyWindows::CaptureScreen()
 {
-    std::string fname = fmt::format("screenshot{0:d}.bmp", cnt++);
-    m_Emulator->CaptureScreen(fname);
-    m_Logger->DoLog(LOG_INFO, "GameBoyWindows::CaptureScreen", "Screenshot saved (file={})", fname);
+    std::string fname = fmt::format("screenshot{0:d}.bmp", cnt);
+    cnt += m_Emulator->CaptureScreen(fname);
 }
 
 #ifdef USE_SDL
