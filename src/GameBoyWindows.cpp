@@ -15,7 +15,8 @@ static void MyMessageBox(Severity severity, const char *message)
                                                      MB_ICONERROR));
 }
 
-// Save the bitmap to a bmp file  
+// Save the bitmap to a bmp file
+// From https://www.technical-recipes.com/2011/creating-bitmap-files-from-raw-pixel-data-in-c/
 static void SaveBitmapToFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> &pixels, const std::string &fname)
 {
     // Some basic bitmap parameters
