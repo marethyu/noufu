@@ -19,6 +19,7 @@ const int UPDATE_INTERVAL = 14; // 1000 ms / 59.72 fps = 16.744 (adjusted for wi
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     static GameBoyWindows gb;
+    static HMENU hMenuBar;
 
     switch (msg)
     {
@@ -30,7 +31,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             DestroyWindow(hWnd);
         }
 #endif
-        HMENU hMenuBar = CreateMenu();
+        hMenuBar = CreateMenu();
+
         HMENU hFile = CreatePopupMenu();
         HMENU hHelp = CreatePopupMenu();
 
@@ -44,6 +46,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         AppendMenu(hHelp, MF_STRING, ID_ABOUT, "About");
 
         SetMenu(hWnd, hMenuBar);
+
+        EnableMenuItem(hMenuBar, ID_RELOAD_ROM, MF_DISABLED | MF_GRAYED);
 
         // resize because we just added the menubar
 #ifdef USE_SDL
@@ -97,6 +101,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             if(GetOpenFileName(&ofn))
             {
                 gb.LoadROM(szFileName);
+                EnableMenuItem(hMenuBar, ID_RELOAD_ROM, MF_ENABLED);
 
                 if(!SetTimer(hWnd, ID_TIMER, UPDATE_INTERVAL, NULL))
                 {
