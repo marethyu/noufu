@@ -5,7 +5,13 @@
 
 #include "Constants.h"
 #include "GBComponent.h"
-#include "RGBTuple.h"
+
+struct rgb_tuple
+{
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+};
 
 class SimpleGPU : public GBComponent
 {

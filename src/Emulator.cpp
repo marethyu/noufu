@@ -1,7 +1,5 @@
+#include "Constants.h"
 #include "Emulator.h"
-
-// Maximum number of cycles per update
-const int MAX_CYCLES = 70224; // 154 scanlines * 456 cycles per frame = 70224
 
 Emulator::Emulator()
 {

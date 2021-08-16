@@ -4,8 +4,8 @@
 #include "CPU.h"
 #include "Emulator.h"
 
-const int HL_add[] = {0, 0, 1, -1};
-const int RST_ADDR[] = {0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38};
+static const int HL_add[] = {0, 0, 1, -1};
+static const int RST_ADDR[] = {0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38};
 
 #define HC8(A, B, cy) ((((A) & 0x0F) + ((B) & 0x0F) + (cy)) > 0x0F)
 #define CARRY8(A, B, cy) ((((A) & 0xFF) + ((B) & 0xFF) + (cy)) >= 0x100)

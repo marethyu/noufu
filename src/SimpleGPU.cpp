@@ -8,7 +8,7 @@
 #define FMT_HEADER_ONLY
 #include "fmt/format.h"
 
-const int DOTS_PER_SCANLINE = 456;
+static const int DOTS_PER_SCANLINE = 456;
 
 enum
 {
