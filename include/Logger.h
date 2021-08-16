@@ -23,7 +23,7 @@ const std::string severity_str[4] = {
     "ERROR"
 };
 
-typedef void (*DoMessageBox)(Severity, const char *);
+typedef void (*MessageBoxFunc)(Severity, const char *);
 
 class Logger
 {
@@ -45,9 +45,9 @@ public:
         fout.close();
     }
 
-    void SetDoMessageBox(DoMessageBox doMessageBox)
+    void SetDoMessageBox(MessageBoxFunc doMessageBox)
     {
-        MsgBox = doMessageBox;
+        DoMessageBox = doMessageBox;
     }
 
     template <typename... Args>
@@ -57,7 +57,7 @@ public:
 
         if (severity == LOG_WARN_POPUP || severity == LOG_ERROR)
         {
-            MsgBox(severity, formatted.c_str());
+            DoMessageBox(severity, formatted.c_str());
         }
 
         fout << fmt::format("[{:<7}] [{}] {}", severity_str[severity], context, formatted) << std::endl;
@@ -65,7 +65,7 @@ public:
 private:
     std::ofstream fout;
 
-    DoMessageBox MsgBox;
+    MessageBoxFunc DoMessageBox;
 };
 
 #endif
