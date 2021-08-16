@@ -1,9 +1,9 @@
 #include "Constants.h"
 #include "Emulator.h"
 
-Emulator::Emulator()
+Emulator::Emulator(std::shared_ptr<Logger> logger)
 {
-    m_EmulatorLogger = std::make_unique<Logger>("emulation_log.txt");
+    m_EmulatorLogger = logger;
 
     bool bConfigFileExists = true;
 
@@ -11,7 +11,7 @@ Emulator::Emulator()
 
     if (!bConfigFileExists)
     {
-        m_EmulatorLogger->DoLog(LOG_INFO, "Emulator::Emulator", "The configuration file was not found, so the new one created with default settings.");
+        m_EmulatorLogger->DoLog(LOG_WARN_POPUP, "Emulator::Emulator", "The configuration file was not found, so the new one created with default settings.");
     }
 
     m_CPU = std::make_unique<CPU>(this, m_Config->GetValue("CPULogging") == "1");

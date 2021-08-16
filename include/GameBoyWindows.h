@@ -15,6 +15,7 @@
 class GameBoyWindows
 {
 private:
+    std::shared_ptr<Logger> m_Logger;
     std::unique_ptr<Emulator> m_Emulator;
 
 #ifdef USE_SDL

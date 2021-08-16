@@ -12,14 +12,18 @@ typedef enum Severity
 {
     LOG_INFO = 0,
     LOG_WARNING,
+    LOG_WARN_POPUP,
     LOG_ERROR
 } Severity;
 
-const std::string severity_str[3] = {
+const std::string severity_str[4] = {
     "INFO",
+    "WARNING",
     "WARNING",
     "ERROR"
 };
+
+typedef void (*DoMessageBox)(Severity, const char *);
 
 class Logger
 {
@@ -33,7 +37,7 @@ public:
             throw std::runtime_error("Logger::Logger: Unable to create a file for logging!");
         }
 
-        Logger::DoLog(LOG_INFO, "Logger::Logger", "{} created!", log_file);
+        Logger::DoLog(LOG_INFO, "Logger::Logger", "{} created", log_file);
     }
 
     ~Logger()
@@ -41,13 +45,27 @@ public:
         fout.close();
     }
 
+    void SetDoMessageBox(DoMessageBox doMessageBox)
+    {
+        MsgBox = doMessageBox;
+    }
+
     template <typename... Args>
     void DoLog(Severity severity, const std::string &context, fmt::format_string<Args...> fmt, Args &&...args)
     {
-        fout << fmt::format("[{:<7}] [{}] {}", severity_str[severity], context, fmt::format(fmt, std::forward<Args>(args)...)) << std::endl;
+        std::string formatted = fmt::format(fmt, std::forward<Args>(args)...);
+
+        if (severity == LOG_WARN_POPUP || severity == LOG_ERROR)
+        {
+            MsgBox(severity, formatted.c_str());
+        }
+
+        fout << fmt::format("[{:<7}] [{}] {}", severity_str[severity], context, formatted) << std::endl;
     }
 private:
     std::ofstream fout;
+
+    DoMessageBox MsgBox;
 };
 
 #endif
