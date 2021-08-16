@@ -340,7 +340,7 @@ void GameBoyWindows::HandleKeyUp(WPARAM wParam)
     }
 }
 
-void GameBoyWindows::CleanUp()
+void GameBoyWindows::Destroy()
 {
     m_Logger->DoLog(LOG_INFO, "GameBoyWindows::CleanUp", "Cleaning up resources...");
 
@@ -356,10 +356,6 @@ void GameBoyWindows::CleanUp()
 
     SDL_Quit();
 #endif
-    return;
-}
 
-void GameBoyWindows::Destroy()
-{
     PostQuitMessage(0);
 }

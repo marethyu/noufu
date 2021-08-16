@@ -49,7 +49,6 @@ public:
 #endif
     void HandleKeyDown(WPARAM wParam);
     void HandleKeyUp(WPARAM wParam);
-    void CleanUp();
     void Destroy();
 };
 

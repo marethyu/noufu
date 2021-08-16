@@ -163,10 +163,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         break;
     }
     case WM_DESTROY:
-        gb.CleanUp();
+    {
         KillTimer(hWnd, ID_TIMER);
         gb.Destroy();
         break;
+    }
     default:
         return DefWindowProc(hWnd, msg, wParam, lParam);
     }
