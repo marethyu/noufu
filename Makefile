@@ -2,7 +2,7 @@ CXX = g++
 
 CXXFLAGS = -std=c++2a -Wall -fmax-errors=5
 WIN_FLAGS = -mwindows -Wl,-subsystem,windows --machine-windows
-LINKFLAGS = -lcomdlg32
+LINKFLAGS = -lcomdlg32 -lshlwapi
 
 .PHONY: all
 .PHONY: clean

@@ -68,6 +68,16 @@ void Emulator::Tick()
     m_TotalCycles += 4;
 }
 
+void Emulator::SetCapture(CaptureFunc capture)
+{
+    Capture = capture;
+}
+
+void Emulator::CaptureScreen(const std::string &fname)
+{
+    Capture(m_GPU->m_Pixels, fname);
+}
+
 void Emulator::Debug_Step(std::vector<char> &blargg_serial, int times)
 {
     for (int i = 0; i < times; ++i)

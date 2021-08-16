@@ -25,6 +25,7 @@ private:
 #else
     BITMAPINFO info;
 #endif
+    int cnt; // incremented by one for each screenshot
 
     void LogSystemInfo();
 public:
@@ -35,6 +36,7 @@ public:
     void LoadROM(const std::string &rom_file);
     void ReloadROM();
     void StopEmulation();
+    void CaptureScreen();
 
 #ifdef USE_SDL
     bool Create(HWND hWnd);

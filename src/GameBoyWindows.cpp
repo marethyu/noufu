@@ -1,5 +1,10 @@
+#include <Shlwapi.h>
+
 #include "Constants.h"
 #include "GameBoyWindows.h"
+
+#define FMT_HEADER_ONLY
+#include "fmt/format.h"
 
 static void MyMessageBox(Severity severity, const char *message)
 {
@@ -8,6 +13,120 @@ static void MyMessageBox(Severity severity, const char *message)
                TEXT(severity_str[severity].c_str()),
                MB_OK | (severity == LOG_WARN_POPUP ? MB_ICONWARNING :
                                                      MB_ICONERROR));
+}
+
+// Save the bitmap to a bmp file  
+static void SaveBitmapToFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> &pixels, const std::string &fname)
+{
+    // Some basic bitmap parameters
+    unsigned long headers_size = sizeof(BITMAPFILEHEADER) +
+                                 sizeof(BITMAPINFOHEADER);
+
+    BITMAPINFOHEADER bmpInfoHeader = {0};
+
+    // Set the size
+    bmpInfoHeader.biSize = sizeof(BITMAPINFOHEADER);
+
+    // Bit count
+    bmpInfoHeader.biBitCount = 32;
+
+    // Use all colors
+    bmpInfoHeader.biClrImportant = 0;
+
+    // Use as many colors according to bits per pixel
+    bmpInfoHeader.biClrUsed = 0;
+
+    // Store as un Compressed
+    bmpInfoHeader.biCompression = BI_RGB;
+
+    // Set the height in pixels
+    bmpInfoHeader.biHeight = SCREEN_HEIGHT;
+
+    // Width of the Image in pixels
+    bmpInfoHeader.biWidth = SCREEN_WIDTH;
+
+    // Default number of planes
+    bmpInfoHeader.biPlanes = 1;
+
+    // Calculate the image size in bytes
+    bmpInfoHeader.biSizeImage = SCREEN_HEIGHT * SCREEN_WIDTH * 4;
+
+    BITMAPFILEHEADER bfh = {0};
+
+    // This value should be values of BM letters i.e 0x4D42
+    // 0x4D = M 0×42 = B storing in reverse order to match with endian
+    bfh.bfType = 0x4D42;
+    //bfh.bfType = 'B'+('M' << 8);
+
+    // <<8 used to shift ‘M’ to end  */
+
+    // Offset to the RGBQUAD
+    bfh.bfOffBits = headers_size;
+
+    // Total size of image including size of headers
+    bfh.bfSize = headers_size;
+
+    // Create the file in disk to write
+    TCHAR bmp_file[MAX_PATH];
+    TCHAR exe_path[MAX_PATH] = {0};
+
+    GetModuleFileName(NULL, exe_path, MAX_PATH);
+    PathCombine(bmp_file, std::string(exe_path).substr(0, std::string(exe_path).find_last_of("\\/")).c_str(), fname.c_str());
+
+    HANDLE hFile = CreateFile(TEXT(bmp_file),
+                              GENERIC_WRITE,
+                              0,
+                              NULL,
+                              CREATE_ALWAYS,
+                              FILE_ATTRIBUTE_NORMAL,
+                              NULL);
+
+    // Return if error opening file
+    if(!hFile) return;
+
+    DWORD dwWritten = 0;
+
+    // Write the File header
+    WriteFile(hFile,
+              &bfh,
+              sizeof(bfh),
+              &dwWritten,
+              NULL);
+
+    // Write the bitmap info header
+    WriteFile(hFile,
+              &bmpInfoHeader,
+              sizeof(bmpInfoHeader),
+              &dwWritten,
+              NULL);
+
+    // Write the RGB Data
+
+    std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> cpy;
+
+    // Perform 180 degree rotation and y-axis mirror before that...
+    for (int i = 0; i < SCREEN_HEIGHT; ++i)
+    {
+        for (int j = 0; j < SCREEN_WIDTH; ++j)
+        {
+            int offset = i * SCREEN_WIDTH * 4 + j * 4;
+            int offset_ = (SCREEN_HEIGHT - i - 1) * SCREEN_WIDTH * 4 + j * 4;
+
+            cpy[offset_] = pixels[offset];
+            cpy[offset_ + 1] = pixels[offset + 1];
+            cpy[offset_ + 2] = pixels[offset + 2];
+            cpy[offset_ + 3] = pixels[offset + 3];
+        }
+    }
+
+    WriteFile(hFile,
+              cpy.data(),
+              bmpInfoHeader.biSizeImage,
+              &dwWritten,
+              NULL);
+
+    // Close the file handle
+    CloseHandle(hFile);
 }
 
 void GameBoyWindows::LogSystemInfo()
@@ -26,6 +145,7 @@ GameBoyWindows::GameBoyWindows()
     m_Logger->SetDoMessageBox(MyMessageBox);
 
     m_Emulator = std::make_unique<Emulator>(m_Logger);
+    m_Emulator->SetCapture(SaveBitmapToFile);
 
 #ifndef USE_SDL
     info.bmiHeader.biSize = sizeof(info.bmiHeader);
@@ -40,6 +160,8 @@ GameBoyWindows::GameBoyWindows()
     info.bmiHeader.biClrUsed = 0;
     info.bmiHeader.biClrImportant = 0;
 #endif
+
+    cnt = 0;
 }
 
 GameBoyWindows::~GameBoyWindows()
@@ -68,6 +190,13 @@ void GameBoyWindows::StopEmulation()
 {
     m_Logger->DoLog(LOG_INFO, "GameBoyWindows::StopEmulation", "Emulation stopped");
     m_Emulator->InitComponents();
+}
+
+void GameBoyWindows::CaptureScreen()
+{
+    std::string fname = fmt::format("screenshot{0:d}.bmp", cnt++);
+    m_Emulator->CaptureScreen(fname);
+    m_Logger->DoLog(LOG_INFO, "GameBoyWindows::CaptureScreen", "Screenshot saved (file={})", fname);
 }
 
 #ifdef USE_SDL

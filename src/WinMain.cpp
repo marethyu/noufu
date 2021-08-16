@@ -7,8 +7,9 @@
 #define ID_LOAD_ROM 0
 #define ID_RELOAD_ROM 1
 #define ID_STOP_EMULATION 2
-#define ID_EXIT 3
-#define ID_ABOUT 4
+#define ID_CAPTURE_SCREEN 3
+#define ID_EXIT 4
+#define ID_ABOUT 5
 
 #define ID_TIMER 1
 
@@ -41,6 +42,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         AppendMenu(hFile, MF_STRING, ID_LOAD_ROM, "Load ROM");
         AppendMenu(hFile, MF_STRING, ID_RELOAD_ROM, "Reload ROM");
         AppendMenu(hFile, MF_STRING, ID_STOP_EMULATION, "Stop emulation");
+        AppendMenu(hFile, MF_STRING, ID_CAPTURE_SCREEN, "Screenshot");
         AppendMenu(hFile, MF_STRING, ID_EXIT, "Exit");
 
         AppendMenu(hHelp, MF_STRING, ID_ABOUT, "About");
@@ -49,6 +51,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         EnableMenuItem(hMenuBar, ID_RELOAD_ROM, MF_DISABLED | MF_GRAYED);
         EnableMenuItem(hMenuBar, ID_STOP_EMULATION, MF_DISABLED | MF_GRAYED);
+        EnableMenuItem(hMenuBar, ID_CAPTURE_SCREEN, MF_DISABLED | MF_GRAYED);
 
         gb.Initialize();
 
@@ -93,6 +96,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
                 EnableMenuItem(hMenuBar, ID_RELOAD_ROM, MF_ENABLED);
                 EnableMenuItem(hMenuBar, ID_STOP_EMULATION, MF_ENABLED);
+                EnableMenuItem(hMenuBar, ID_CAPTURE_SCREEN, MF_ENABLED);
 
                 if(!SetTimer(hWnd, ID_TIMER, UPDATE_INTERVAL, NULL))
                 {
@@ -119,9 +123,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
             EnableMenuItem(hMenuBar, ID_RELOAD_ROM, MF_DISABLED | MF_GRAYED);
             EnableMenuItem(hMenuBar, ID_STOP_EMULATION, MF_DISABLED | MF_GRAYED);
+            EnableMenuItem(hMenuBar, ID_CAPTURE_SCREEN, MF_DISABLED | MF_GRAYED);
 
             KillTimer(hWnd, ID_TIMER);
             InvalidateRect(hWnd, NULL, FALSE);
+            break;
+        }
+        case ID_CAPTURE_SCREEN:
+        {
+            gb.CaptureScreen();
             break;
         }
         case ID_EXIT:

@@ -12,7 +12,6 @@ ppu fifo
 custom startup logo
 icon
 gb color emulation
-screenshot feature
 config file more options (debug mode on/off, what shade of color, cgb mode on/off, input settings, lcd display size)
 add folders (States, Boot)
 wide screen with viewport at center (give preview in background map)
