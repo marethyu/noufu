@@ -8,4 +8,6 @@
 // Maximum number of cycles per update
 #define MAX_CYCLES 70224 /* 154 scanlines * 456 cycles per frame = 70224 */
 
+#define EMULATOR_NAME "Noufu"
+
 #endif
