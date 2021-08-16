@@ -38,7 +38,6 @@ public:
 
 #ifdef USE_SDL
     bool Create(HWND hWnd);
-    void FixSize();
 #endif
     void Update();
 #ifndef USE_SDL

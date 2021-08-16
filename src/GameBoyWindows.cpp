@@ -102,11 +102,6 @@ bool GameBoyWindows::Create(HWND hWnd)
 
     return true;
 }
-
-void GameBoyWindows::FixSize()
-{
-    SDL_SetWindowSize(m_Window, SCREEN_WIDTH * SCREEN_SCALE_FACTOR, SCREEN_HEIGHT * SCREEN_SCALE_FACTOR);
-}
 #endif
 
 void GameBoyWindows::Update()

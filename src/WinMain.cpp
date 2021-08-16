@@ -50,18 +50,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         EnableMenuItem(hMenuBar, ID_RELOAD_ROM, MF_DISABLED | MF_GRAYED);
         EnableMenuItem(hMenuBar, ID_STOP_EMULATION, MF_DISABLED | MF_GRAYED);
 
-        // resize because we just added the menubar
-#ifdef USE_SDL
-        gb.FixSize();
-#else
-        SetWindowPos(hWnd,
-                     0,
-                     0,
-                     0,
-                     SCREEN_WIDTH * SCREEN_SCALE_FACTOR,
-                     SCREEN_HEIGHT * SCREEN_SCALE_FACTOR + GetSystemMetrics(SM_CYMENUSIZE),
-                     SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
-#endif
         gb.Initialize();
 
         break;
@@ -185,6 +173,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     WNDCLASS wc;
     HWND hWnd;
     MSG msg;
+    RECT rcClient;
+    UINT style = WS_OVERLAPPEDWINDOW | WS_VISIBLE;
+
+    rcClient.left = 0;
+    rcClient.top = 0;
+    rcClient.right = SCREEN_WIDTH * SCREEN_SCALE_FACTOR;
+    rcClient.bottom = SCREEN_HEIGHT * SCREEN_SCALE_FACTOR;
+
+    AdjustWindowRectEx(&rcClient, style, TRUE, 0);
 
     wc.style         = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc   = WndProc;
@@ -207,9 +204,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     hWnd = CreateWindow(szClassName,
         TEXT(EMULATOR_NAME),
-        WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-        CW_USEDEFAULT, CW_USEDEFAULT, SCREEN_WIDTH * SCREEN_SCALE_FACTOR, SCREEN_HEIGHT * SCREEN_SCALE_FACTOR,
-        NULL, NULL, hInstance, NULL);
+        style,
+        CW_USEDEFAULT,
+        CW_USEDEFAULT,
+        rcClient.right - rcClient.left,
+        rcClient.bottom - rcClient.top,
+        NULL,
+        NULL,
+        hInstance,
+        NULL);
 
     if (hWnd == NULL)
     {
