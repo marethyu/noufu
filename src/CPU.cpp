@@ -16,10 +16,10 @@ static const uint8_t int_vectors[5] = {
     0x60
 };
 
-CPU::CPU(Emulator *emu, bool enableLogging)
+CPU::CPU(Emulator *emu)
 {
     m_Emulator = emu;
-    bLoggingEnabled = enableLogging;
+    bLoggingEnabled = emu->m_Config->GetValue("CPULogging") == "1";
 }
 
 CPU::~CPU()

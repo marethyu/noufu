@@ -20,6 +20,8 @@ private:
 
     Emulator *m_Emulator;
 
+    bool bLoggingEnabled;
+
     bool bUseBootROM;
     bool inBootMode;
     std::array<uint8_t, 0x100> m_BootROM;

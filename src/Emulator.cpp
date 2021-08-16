@@ -14,7 +14,7 @@ Emulator::Emulator(std::shared_ptr<Logger> logger)
         m_EmulatorLogger->DoLog(LOG_WARN_POPUP, "Emulator::Emulator", "The configuration file was not found, so the new one created with default settings.");
     }
 
-    m_CPU = std::make_unique<CPU>(this, m_Config->GetValue("CPULogging") == "1");
+    m_CPU = std::make_unique<CPU>(this);
     m_MemControl = std::make_unique<MemoryController>(this);
     m_IntManager = std::make_unique<InterruptManager>(this);
     m_Timer = std::make_unique<Timer>(this);

@@ -5,7 +5,7 @@
 
 EmulatorConfig::EmulatorConfig(bool &bConfigFileExists)
 {
-    std::ifstream istream("config", std::ios::in);
+    std::ifstream istream("config.ini", std::ios::in);
     std::string line;
 
     if (!istream)
@@ -14,7 +14,7 @@ EmulatorConfig::EmulatorConfig(bool &bConfigFileExists)
 
         EmulatorConfig::DefaultSettings();
 
-        std::ofstream config("config");
+        std::ofstream config("config.ini");
 
         for (auto it = m_Settings.begin(); it != m_Settings.end(); it++)
         {
@@ -52,6 +52,7 @@ void EmulatorConfig::DefaultSettings()
     m_Settings["UseBootROM"] = "0";
     m_Settings["BootROMPath"] = "";
     m_Settings["CPULogging"] = "0";
+    m_Settings["MMULogging"] = "0";
     m_Settings["Color0"] = "E0.F8.D0";
     m_Settings["Color1"] = "88.C0.70";
     m_Settings["Color2"] = "34.68.56";

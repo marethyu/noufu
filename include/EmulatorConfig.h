@@ -17,6 +17,7 @@ private:
     // - UseBootROM
     // - BootROMPath
     // - CPULogging
+    // - MMULogging
     // - Color0
     // - Color1
     // - Color2

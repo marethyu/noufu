@@ -70,7 +70,7 @@ private:
     void ShiftBitsRight(uint8_t &n, bool logical=false);
     void HandlePrefixCB();
 public:
-    CPU(Emulator *emu, bool enableLogging);
+    CPU(Emulator *emu);
     ~CPU();
 
     void Init();

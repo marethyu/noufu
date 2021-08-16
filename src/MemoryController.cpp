@@ -40,6 +40,7 @@ void MemoryController::DMATransfer(uint8_t data)
 MemoryController::MemoryController(Emulator *emu)
 {
     m_Emulator = emu;
+    bLoggingEnabled = emu->m_Config->GetValue("MMULogging") == "1";
     bUseBootROM = emu->m_Config->GetValue("UseBootROM") == "1";
 
     if (bUseBootROM)
@@ -111,8 +112,6 @@ void MemoryController::ReloadROM()
     m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "MMU::ReloadROM", "Current ROM reloaded (BOOT_MODE={:d})", inBootMode);
 }
 
-/* TODO MemoryController needs enableLogging (bool) */
-
 uint8_t MemoryController::ReadByte(uint16_t address) const
 {
     if (inBootMode && address <= 0xFF)
@@ -129,7 +128,10 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
     }
     else if (address >= 0xA000 && address < 0xC000)
     {
-        m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::ReadByte", "Attempted to read from $A000-$BFFF; Probably need to implement MBC; address={0:04X}", address);
+        if (bLoggingEnabled)
+        {
+            m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::ReadByte", "Attempted to read from $A000-$BFFF; Probably need to implement MBC; address={0:04X}", address);
+        }
         return 0x00;
     }
     else if (address >= 0xC000 && address < 0xE000)
@@ -146,7 +148,10 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
     }
     else if (address >= 0xFEA0 && address < 0xFF00)
     {
-        m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::ReadByte", "Attempted to read from $FEA0-$FEFF; address={0:04X}", address);
+        if (bLoggingEnabled)
+        {
+            m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::ReadByte", "Attempted to read from $FEA0-$FEFF; address={0:04X}", address);
+        }
         return 0x00;
     }
     else if (address == 0xFF00)
@@ -187,11 +192,17 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
 {
     if (inBootMode && address <= 0xFF)
     {
-        m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::WriteByte", "Attempted to write to $00-$FF; address={0:04X}", address);
+        if (bLoggingEnabled)
+        {
+            m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::WriteByte", "Attempted to write to $00-$FF; address={0:04X}", address);
+        }
     }
     else if (address < 0x8000)
     {
-        m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::WriteByte", "Attempted to write to $0000-$7FFF; address={0:04X}", address);
+        if (bLoggingEnabled)
+        {
+            m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::WriteByte", "Attempted to write to $0000-$7FFF; address={0:04X}", address);
+        }
     }
     else if (address >= 0x8000 && address < 0xA000)
     {
@@ -199,7 +210,10 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else if (address >= 0xA000 && address < 0xC000)
     {
-        m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::WriteByte", "Attempted to write to $A000-$BFFF; Probably need to implement MBC; address={0:04X}", address);
+        if (bLoggingEnabled)
+        {
+            m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::WriteByte", "Attempted to write to $A000-$BFFF; Probably need to implement MBC; address={0:04X}", address);
+        }
     }
     else if (address >= 0xC000 && address < 0xE000)
     {
@@ -215,7 +229,10 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else if (address >= 0xFEA0 && address < 0xFF00)
     {
-        m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::WriteByte", "Attempted to write to $FEA0-$FEFF; address={0:04X}", address);
+        if (bLoggingEnabled)
+        {
+            m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::WriteByte", "Attempted to write to $FEA0-$FEFF; address={0:04X}", address);
+        }
     }
     else if (address == 0xFF04)
     {
@@ -287,6 +304,7 @@ void MemoryController::Debug_EditMemory(uint16_t address, uint8_t data)
 void MemoryController::Debug_PrintMemoryRange(uint16_t start, uint16_t end)
 {
     std::cout << "address: value" << std::endl;
+
     for (uint16_t addr = start; addr < end; ++addr)
     {
         std::cout << fmt::format("${0:04X}: ${0:02X}", addr, MemoryController::ReadByte(addr)) << std::endl;
