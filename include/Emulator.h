@@ -24,8 +24,8 @@ public:
     void Update();
     void Tick(); // + 1 M-cycle
 
-    void Debug_Step(std::vector<char>& blargg_serial, int times);
-    void Debug_StepTill(std::vector<char>& blargg_serial, uint16_t x);
+    void Debug_Step(std::vector<char> &blargg_serial, int times);
+    void Debug_StepTill(std::vector<char> &blargg_serial, uint16_t x);
     void Debug_PrintEmulatorStatus();
 
     std::unique_ptr<EmulatorConfig> m_Config;

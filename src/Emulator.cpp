@@ -68,7 +68,7 @@ void Emulator::Tick()
     m_TotalCycles += 4;
 }
 
-void Emulator::Debug_Step(std::vector<char>& blargg_serial, int times)
+void Emulator::Debug_Step(std::vector<char> &blargg_serial, int times)
 {
     for (int i = 0; i < times; ++i)
     {
@@ -92,7 +92,7 @@ void Emulator::Debug_Step(std::vector<char>& blargg_serial, int times)
     }
 }
 
-void Emulator::Debug_StepTill(std::vector<char>& blargg_serial, uint16_t x)
+void Emulator::Debug_StepTill(std::vector<char> &blargg_serial, uint16_t x)
 {
     while (m_CPU->GetPC() != x)
     {
