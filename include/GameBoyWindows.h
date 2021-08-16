@@ -32,7 +32,7 @@ public:
     ~GameBoyWindows();
 
     void Initialize();
-    void LoadROM(const std::string& rom_file);
+    void LoadROM(const std::string &rom_file);
     void ReloadROM();
 
 #ifdef USE_SDL

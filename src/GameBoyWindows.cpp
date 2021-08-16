@@ -52,7 +52,7 @@ void GameBoyWindows::Initialize()
     GameBoyWindows::LogSystemInfo();
 }
 
-void GameBoyWindows::LoadROM(const std::string& rom_file)
+void GameBoyWindows::LoadROM(const std::string &rom_file)
 {
     m_Emulator->InitComponents();
     m_Emulator->m_MemControl->LoadROM(rom_file);

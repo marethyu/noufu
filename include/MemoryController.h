@@ -32,7 +32,7 @@ public:
 
     void Init();
     void Reset() {} // nothing
-    void LoadROM(const std::string& rom_file);
+    void LoadROM(const std::string &rom_file);
     void ReloadROM();
     uint8_t ReadByte(uint16_t address) const;
     uint16_t ReadWord(uint16_t address) const;

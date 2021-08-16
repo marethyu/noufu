@@ -62,7 +62,7 @@ void MemoryController::Init()
     std::generate(m_HRAM.begin(), m_HRAM.end(), std::rand);
 }
 
-void MemoryController::LoadROM(const std::string& rom_file)
+void MemoryController::LoadROM(const std::string &rom_file)
 {
     std::ifstream istream(rom_file, std::ios::in | std::ios::binary);
 
