@@ -64,6 +64,12 @@ void GameBoyWindows::ReloadROM()
     m_Emulator->m_MemControl->ReloadROM();
 }
 
+void GameBoyWindows::StopEmulation()
+{
+    m_Logger->DoLog(LOG_INFO, "GameBoyWindows::StopEmulation", "Emulation stopped");
+    m_Emulator->InitComponents();
+}
+
 #ifdef USE_SDL
 bool GameBoyWindows::Create(HWND hWnd)
 {

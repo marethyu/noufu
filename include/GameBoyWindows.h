@@ -34,6 +34,7 @@ public:
     void Initialize();
     void LoadROM(const std::string &rom_file);
     void ReloadROM();
+    void StopEmulation();
 
 #ifdef USE_SDL
     bool Create(HWND hWnd);
