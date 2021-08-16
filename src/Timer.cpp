@@ -80,7 +80,7 @@ void Timer::UpdateFreq()
 
 int Timer::TimerEnable()
 {
-    return TEST_BIT(TAC, 2);
+    return GET_BIT(TAC, 2);
 }
 
 int Timer::ClockSelect()

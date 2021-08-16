@@ -109,7 +109,7 @@ void InterruptManager::InterruptRoutine()
 
         for (int i = 0; i < 5; ++i)
         {
-            if (m_IME && TEST_BIT(IF, i) && TEST_BIT(IE, i))
+            if (m_IME && GET_BIT(IF, i) && GET_BIT(IE, i))
             {
                 m_Emulator->m_CPU->HandleInterrupt(i);
             }

@@ -31,12 +31,12 @@ void JoyPad::Reset()
 
 void JoyPad::PressButton(int button)
 {
-    bool pressed = !TEST_BIT(joypad_state, button);
+    bool pressed = !GET_BIT(joypad_state, button);
 
     RES_BIT(joypad_state, button);
 
-    if (((button > 3 && !TEST_BIT(P1, 5)) ||
-         (button <= 3 && !TEST_BIT(P1, 4))) &&
+    if (((button > 3 && !GET_BIT(P1, 5)) ||
+         (button <= 3 && !GET_BIT(P1, 4))) &&
         !pressed)
     {
         m_Emulator->m_IntManager->RequestInterrupt(INT_JOYPAD);
@@ -54,13 +54,13 @@ uint8_t JoyPad::ReadP1()
 
     jp_reg |= 0xCF; // 0b11001111
 
-    if (!TEST_BIT(jp_reg, 5)) // standard buttons
+    if (!GET_BIT(jp_reg, 5)) // standard buttons
     {
         uint8_t hi = joypad_state >> 4; // the states of standard buttons are stored at upper 4 bits, remember?
         jp_reg &= 0xF0 | hi; // 0xF0 is necessary for bitwise & operation
     }
 
-    if (!TEST_BIT(jp_reg, 4)) // directional buttons
+    if (!GET_BIT(jp_reg, 4)) // directional buttons
     {
         uint8_t lo = joypad_state & 0x0F;
         jp_reg &= 0xF0 | lo;

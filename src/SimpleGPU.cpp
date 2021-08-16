@@ -43,42 +43,42 @@ void SimpleGPU::InitRGBTuple(rgb_tuple &tup, const std::string &colour_info)
 
 bool SimpleGPU::bLCDEnabled()
 {
-    return TEST_BIT(LCDC, 7);
+    return GET_BIT(LCDC, 7);
 }
 
 bool SimpleGPU::bWindowEnable()
 {
-    return TEST_BIT(LCDC, 5);
+    return GET_BIT(LCDC, 5);
 }
 
 bool SimpleGPU::bSpriteEnable()
 {
-    return TEST_BIT(LCDC, 1);
+    return GET_BIT(LCDC, 1);
 }
 
 bool SimpleGPU::bBGAndWindowEnable()
 {
-    return TEST_BIT(LCDC, 0);
+    return GET_BIT(LCDC, 0);
 }
 
 bool SimpleGPU::bCoincidenceStatInterrupt()
 {
-    return TEST_BIT(STAT, 6);
+    return GET_BIT(STAT, 6);
 }
 
 bool SimpleGPU::bOAMStatInterrupt()
 {
-    return TEST_BIT(STAT, 5);
+    return GET_BIT(STAT, 5);
 }
 
 bool SimpleGPU::bVBlankStatInterrupt()
 {
-    return TEST_BIT(STAT, 4);
+    return GET_BIT(STAT, 4);
 }
 
 bool SimpleGPU::bHBlankStatInterrupt()
 {
-    return TEST_BIT(STAT, 3);
+    return GET_BIT(STAT, 3);
 }
 
 void SimpleGPU::UpdateMode(int mode)
@@ -163,12 +163,12 @@ void SimpleGPU::DrawCurrentLine()
 
 void SimpleGPU::RenderBackground()
 {
-    uint16_t wndTileMem = TEST_BIT(LCDC, 4) ? 0x8000 : 0x8800;
+    uint16_t wndTileMem = GET_BIT(LCDC, 4) ? 0x8000 : 0x8800;
 
     bool _signed = wndTileMem == 0x8800;
-    bool usingWnd = TEST_BIT(LCDC, 5) && WY <= LY; // true if window display is enabled (specified in LCDC) and WndY <= LY
+    bool usingWnd = GET_BIT(LCDC, 5) && WY <= LY; // true if window display is enabled (specified in LCDC) and WndY <= LY
 
-    uint16_t bkgdTileMem = TEST_BIT(LCDC, usingWnd ? 6 : 3) ? 0x9C00 : 0x9800;
+    uint16_t bkgdTileMem = GET_BIT(LCDC, usingWnd ? 6 : 3) ? 0x9C00 : 0x9800;
 
     // the y-position is used to determine which of 32 (256 / 8) vertical tiles will used (background map y)
     uint8_t yPos = !usingWnd ? SCY + LY : LY - WY; // map to window coordinates if necessary
@@ -199,7 +199,7 @@ void SimpleGPU::RenderBackground()
 
 void SimpleGPU::RenderSprites()
 {
-    bool use8x16 = TEST_BIT(LCDC, 2); // determine the sprite size
+    bool use8x16 = GET_BIT(LCDC, 2); // determine the sprite size
 
     // the sprite layer can display up to 40 sprites
     for (int i = 0; i < 40; ++i)
@@ -211,8 +211,8 @@ void SimpleGPU::RenderSprites()
         uint8_t patternNumber = m_Emulator->m_MemControl->ReadByte(0xFE00 + index + 2);
         uint8_t attributes = m_Emulator->m_MemControl->ReadByte(0xFE00 + index + 3);
 
-        bool xFlip = TEST_BIT(attributes, 5);
-        bool yFlip = TEST_BIT(attributes, 6);
+        bool xFlip = GET_BIT(attributes, 5);
+        bool yFlip = GET_BIT(attributes, 6);
 
         int height = use8x16 ? 16 : 8;
 
@@ -243,7 +243,7 @@ void SimpleGPU::RenderSprites()
                 }
 
                 int colourNum = (GET_BIT(data2, bit) << 1) | GET_BIT(data1, bit);
-                rgb_tuple col = SimpleGPU::GetColour(colourNum, TEST_BIT(attributes, 4) ? OBP1 : OBP0);
+                rgb_tuple col = SimpleGPU::GetColour(colourNum, GET_BIT(attributes, 4) ? OBP1 : OBP0);
 
                 // it's transparent for sprites
                 if (col.r == gb_colours[SHADE0].r && col.g == gb_colours[SHADE0].g && col.b == gb_colours[SHADE0].b)
@@ -272,7 +272,7 @@ void SimpleGPU::RenderPixel(int row, int col, rgb_tuple colour, int attr)
     if (attr != -1)
     {
         // if the bit 7 of attributes is set then the screen pixel colour must be SHADE0 before changing colour
-        if (TEST_BIT(attr, 7) && ((m_Pixels[offset + 2] != gb_colours[SHADE0].r) || (m_Pixels[offset + 1] != gb_colours[SHADE0].g) || (m_Pixels[offset] != gb_colours[SHADE0].b)))
+        if (GET_BIT(attr, 7) && ((m_Pixels[offset + 2] != gb_colours[SHADE0].r) || (m_Pixels[offset + 1] != gb_colours[SHADE0].g) || (m_Pixels[offset] != gb_colours[SHADE0].b)))
         {
             return;
         }

@@ -57,7 +57,7 @@ uint16_t CPU::NextWord()
 
 bool CPU::IsFlagSet(int flag)
 {
-    return TEST_BIT(F, flag);
+    return GET_BIT(F, flag);
 }
 
 void CPU::ModifyFlag(int flag, int value)
@@ -103,7 +103,7 @@ void CPU::Call(uint16_t addr)
 
 void CPU::RotateBitsLeft(uint8_t &n, bool circular, bool resetZ)
 {
-    bool bIsBit7Set = TEST_BIT(n, 7);
+    bool bIsBit7Set = GET_BIT(n, 7);
     n <<= 1;
     if (circular ? bIsBit7Set : CPU::IsFlagSet(FLAG_C)) SET_BIT(n, 0);
     CPU::ModifyFlag(FLAG_Z, resetZ ? 0 : n == 0);
@@ -114,7 +114,7 @@ void CPU::RotateBitsLeft(uint8_t &n, bool circular, bool resetZ)
 
 void CPU::RotateBitsRight(uint8_t &n, bool circular, bool resetZ)
 {
-    bool bIsBit0Set = TEST_BIT(n, 0);
+    bool bIsBit0Set = GET_BIT(n, 0);
     n >>= 1;
     if (circular ? bIsBit0Set : CPU::IsFlagSet(FLAG_C)) SET_BIT(n, 7);
     CPU::ModifyFlag(FLAG_Z, resetZ ? 0 : n == 0);
@@ -125,7 +125,7 @@ void CPU::RotateBitsRight(uint8_t &n, bool circular, bool resetZ)
 
 void CPU::ShiftBitsLeft(uint8_t &n)
 {
-    bool bIsBit7Set = TEST_BIT(n, 7);
+    bool bIsBit7Set = GET_BIT(n, 7);
     n <<= 1;
     CPU::ModifyFlag(FLAG_Z, n == 0);
     CPU::ModifyFlag(FLAG_N, 0);
@@ -135,8 +135,8 @@ void CPU::ShiftBitsLeft(uint8_t &n)
 
 void CPU::ShiftBitsRight(uint8_t &n, bool logical)
 {
-    bool bIsBit0Set = TEST_BIT(n, 0);
-    bool bIsBit7Set = TEST_BIT(n, 7);
+    bool bIsBit0Set = GET_BIT(n, 0);
+    bool bIsBit7Set = GET_BIT(n, 7);
     n >>= 1;
     if (!logical && bIsBit7Set) SET_BIT(n, 7); // The content of bit 7 is unchanged. (see the gameboy programming manual)
     CPU::ModifyFlag(FLAG_Z, n == 0);
@@ -258,7 +258,7 @@ void CPU::HandlePrefixCB()
     case 0x70: case 0x71: case 0x72: case 0x73: case 0x74: case 0x75: case 0x77: // bit 6,r8
     case 0x78: case 0x79: case 0x7A: case 0x7B: case 0x7C: case 0x7D: case 0x7F: // bit 7,r8
     {
-        CPU::ModifyFlag(FLAG_Z, !TEST_BIT(*reg8_group[opcode & 7], opcode >> 3 & 7));
+        CPU::ModifyFlag(FLAG_Z, !GET_BIT(*reg8_group[opcode & 7], opcode >> 3 & 7));
         CPU::ModifyFlag(FLAG_N, 0);
         CPU::ModifyFlag(FLAG_H, 1);
         break;
@@ -267,7 +267,7 @@ void CPU::HandlePrefixCB()
     case 0x46: case 0x4E: case 0x56: case 0x5E: case 0x66: case 0x6E: case 0x76: case 0x7E:
     {
         uint8_t hl = CPU::ReadByte(HL);
-        CPU::ModifyFlag(FLAG_Z, !TEST_BIT(hl, (opcode - 0x46) >> 3));
+        CPU::ModifyFlag(FLAG_Z, !GET_BIT(hl, (opcode - 0x46) >> 3));
         CPU::ModifyFlag(FLAG_N, 0);
         CPU::ModifyFlag(FLAG_H, 1);
         break;
