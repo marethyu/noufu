@@ -155,7 +155,7 @@ GameBoyWindows::GameBoyWindows()
     info.bmiHeader.biPlanes = 1;
     info.bmiHeader.biBitCount = 32;
     info.bmiHeader.biCompression = BI_RGB;
-    info.bmiHeader.biSizeImage = 0;
+    info.bmiHeader.biSizeImage = SCREEN_HEIGHT * SCREEN_WIDTH * 4;
     info.bmiHeader.biXPelsPerMeter = 0;
     info.bmiHeader.biYPelsPerMeter = 0;
     info.bmiHeader.biClrUsed = 0;
