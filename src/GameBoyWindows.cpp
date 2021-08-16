@@ -74,7 +74,7 @@ static int SavePixelsToBitmap(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HE
     GetModuleFileName(NULL, exe_path, MAX_PATH);
     PathCombine(bmp_file, std::string(exe_path).substr(0, std::string(exe_path).find_last_of("\\/")).c_str(), fname.c_str());
 
-    HANDLE hFile = CreateFile(TEXT(bmp_file),
+    HANDLE hFile = CreateFile(bmp_file,
                               GENERIC_WRITE,
                               0,
                               NULL,
