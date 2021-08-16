@@ -1,17 +1,31 @@
 CXX = g++
+
 CXXFLAGS = -std=c++2a -Wall -fmax-errors=5
 WIN_FLAGS = -mwindows -Wl,-subsystem,windows --machine-windows
-LINKFLAGS := -lSDL2 -lgdi32 -lcomdlg32
+LINKFLAGS = -lcomdlg32
 
 .PHONY: all
 .PHONY: clean
 
-SRC_PATH := ./src/
-OBJ_PATH := ./obj/
-INC_PATH := ./include/
+SRC_PATH = ./src/
+INC_PATH = ./include/
 
 # TODO add ./bin/cli/noufu_cli.exe
-TARGET = ./bin/gui/noufu.exe
+
+ifeq ($(SDL), 1)
+ CXXFLAGS += -D USE_SDL
+ LINKFLAGS += -lSDL2
+ OBJ_PATH = ./obj/sdl/
+ TARGET = ./bin/gui/sdl/noufu.exe
+else
+ LINKFLAGS += -lgdi32
+ OBJ_PATH = ./obj/gdi/
+ TARGET = ./bin/gui/gdi/noufu.exe
+ SDL=0
+endif
+
+$(info SDL=$(SDL))
+$(info TARGET=$(TARGET))
 
 OBJ1 := CPUOpcodes.o \
         CPU.o \
@@ -38,6 +52,8 @@ $(OBJ_PATH)%.o: $(SRC_PATH)%.cpp
 	@$(CXX) $(CXXFLAGS) -o $@ -c $< -I $(INC_PATH)
 
 clean:
-	del /q obj\*.o
-	del /q bin\gui\noufu.exe
+	del /q obj\gdi\*.o
+	del /q obj\sdl\*.o
+	del /q bin\gui\sdl\noufu.exe
+	del /q bin\gui\gdi\noufu.exe
 	del /q bin\cli\noufu_cli.exe

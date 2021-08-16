@@ -1,8 +1,12 @@
 /ROMS/*
-/bin/gui/*
-!/bin/gui/.gitkeep
-!/bin/gui/SDL2.dll
+/bin/gui/gdi/*
+!/bin/gui/gdi/.gitkeep
+/bin/gui/sdl/*
+!/bin/gui/sdl/.gitkeep
+!/bin/gui/sdl/SDL2.dll
 /bin/cli/*
 !/bin/cli/.gitkeep
-/obj/*
-!obj/.gitkeep
+/obj/gdi/*
+!obj/gdi/.gitkeep
+/obj/sdl/*
+!obj/sdl/.gitkeep

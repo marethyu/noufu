@@ -24,11 +24,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
     case WM_CREATE:
     {
+#ifdef USE_SDL
         if (!gb.Create(hWnd))
         {
             DestroyWindow(hWnd);
         }
-
+#endif
         HMENU hMenuBar = CreateMenu();
         HMENU hFile = CreatePopupMenu();
         HMENU hHelp = CreatePopupMenu();
@@ -44,7 +45,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
         SetMenu(hWnd, hMenuBar);
 
-        gb.FixSize(); // resize because we just added the menubar
+        // resize because we just added the menubar
+#ifdef USE_SDL
+        gb.FixSize();
+#else
+        SetWindowPos(hWnd,
+                     0,
+                     0,
+                     0,
+                     SCREEN_WIDTH * SCREEN_SCALE_FACTOR,
+                     SCREEN_HEIGHT * SCREEN_SCALE_FACTOR + GetSystemMetrics(SM_CYMENUSIZE),
+                     SWP_NOMOVE | SWP_NOOWNERZORDER | SWP_NOZORDER);
+#endif
         gb.Initialize();
 
         break;
@@ -57,7 +69,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     case WM_PAINT:
     {
+#ifndef USE_SDL
         gb.RenderGraphics(hWnd);
+#else
+        gb.RenderGraphics();
+#endif
         break;
     }
     case WM_COMMAND:

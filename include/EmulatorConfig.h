@@ -17,7 +17,6 @@ private:
     // - UseBootROM
     // - BootROMPath
     // - CPULogging
-    // - UseSDL
     std::map<std::string, std::string> m_Settings;
 
     void DefaultSettings();
