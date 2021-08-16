@@ -15,9 +15,9 @@ static void MyMessageBox(Severity severity, const char *message)
                                                      MB_ICONERROR));
 }
 
-// Save the bitmap to a bmp file
-// From https://www.technical-recipes.com/2011/creating-bitmap-files-from-raw-pixel-data-in-c/
-static int SaveBitmapToFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> &pixels, const std::string &fname)
+// Save the pixel data to a bmp file
+// Adapted from https://www.technical-recipes.com/2011/creating-bitmap-files-from-raw-pixel-data-in-c/
+static int SavePixelsToBitmap(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> &pixels, const std::string &fname)
 {
     // Some basic bitmap parameters
     unsigned long headers_size = sizeof(BITMAPFILEHEADER) +
@@ -148,7 +148,7 @@ GameBoyWindows::GameBoyWindows()
     m_Logger->SetDoMessageBox(MyMessageBox);
 
     m_Emulator = std::make_unique<Emulator>(m_Logger);
-    m_Emulator->SetCapture(SaveBitmapToFile);
+    m_Emulator->SetCapture(SavePixelsToBitmap);
 
 #ifndef USE_SDL
     info.bmiHeader.biSize = sizeof(info.bmiHeader);
