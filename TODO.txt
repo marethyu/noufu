@@ -5,7 +5,6 @@ serial communication
 debug window
 save state
 double speed mode
-pause emulation
 battery
 mbcs
 ppu fifo
