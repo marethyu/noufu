@@ -17,6 +17,15 @@
 // Delay between updates
 static const int UPDATE_INTERVAL = 14; // 1000 ms / 59.72 fps = 16.744 (adjusted for win32 timer)
 
+void StartTimer(HWND hWnd)
+{
+    if(!SetTimer(hWnd, ID_TIMER, UPDATE_INTERVAL, NULL))
+    {
+        MessageBox(hWnd, "Could not set timer!", "Error", MB_OK | MB_ICONEXCLAMATION);
+        PostQuitMessage(1);
+    }
+}
+
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     static GameBoyWindows gb;
@@ -65,11 +74,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     case WM_TIMER:
     {
-        if (!paused)
-        {
-            gb.Update();
-            InvalidateRect(hWnd, NULL, FALSE);
-        }
+        gb.Update();
+        InvalidateRect(hWnd, NULL, FALSE);
         break;
     }
     case WM_PAINT:
@@ -108,23 +114,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 EnableMenuItem(hMenuBar, ID_STOP_EMULATION, MF_ENABLED);
                 EnableMenuItem(hMenuBar, ID_CAPTURE_SCREEN, MF_ENABLED);
 
-                if(!SetTimer(hWnd, ID_TIMER, UPDATE_INTERVAL, NULL))
-                {
-                    MessageBox(hWnd, "Could not set timer!", "Error", MB_OK | MB_ICONEXCLAMATION);
-                    PostQuitMessage(1);
-                }
+                StartTimer(hWnd);
             }
             break;
         }
         case ID_RELOAD_ROM:
         {
             gb.ReloadROM();
-
-            if(!SetTimer(hWnd, ID_TIMER, UPDATE_INTERVAL, NULL))
-            {
-                MessageBox(hWnd, "Could not set timer!", "Error", MB_OK | MB_ICONEXCLAMATION);
-                PostQuitMessage(1);
-            }
+            StartTimer(hWnd);
             break;
         }
         case ID_PAUSE_RESUME_EMU:
@@ -133,10 +130,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
             if (paused)
             {
+                KillTimer(hWnd, ID_TIMER);
                 ModifyMenu(hFile, ID_PAUSE_RESUME_EMU, MF_STRING | MF_BYCOMMAND, ID_PAUSE_RESUME_EMU, "Resume emulation");
             }
             else
             {
+                StartTimer(hWnd);
                 ModifyMenu(hFile, ID_PAUSE_RESUME_EMU, MF_STRING | MF_BYCOMMAND, ID_PAUSE_RESUME_EMU, "Pause emulation");
             }
             break;
