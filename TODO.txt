@@ -28,3 +28,6 @@ opengl
 video recording (to gif)
 keyboard shortcuts for menubar items
 friend classes
+async logging
+interrupt logging
+make gameboy and emulatorconfig global in main file
