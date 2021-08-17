@@ -75,7 +75,7 @@ public:
 
     void Init();
     void Reset();
-    void Step(); // step a M-cycle
+    void Step();
     void HandleInterrupt(int i);
     bool isHalted();
     void Resume();
