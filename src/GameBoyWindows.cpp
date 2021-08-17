@@ -17,7 +17,7 @@ static void MyMessageBox(Severity severity, const char *message)
 
 // Save the pixel data to a bmp file
 // Adapted from https://www.technical-recipes.com/2011/creating-bitmap-files-from-raw-pixel-data-in-c/
-static int SavePixelsToBitmap(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> &pixels, const std::string &fname)
+static int SavePixelsToBmpFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> &pixels, const std::string &fname)
 {
     // Some basic bitmap parameters
     unsigned long headers_size = sizeof(BITMAPFILEHEADER) +
@@ -50,7 +50,7 @@ static int SavePixelsToBitmap(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HE
     bmpInfoHeader.biPlanes = 1;
 
     // Calculate the image size in bytes
-    bmpInfoHeader.biSizeImage = SCREEN_HEIGHT * SCREEN_WIDTH * 4;
+    bmpInfoHeader.biSizeImage = ((((SCREEN_WIDTH * 32) + 31) & ~31) >> 3) * SCREEN_HEIGHT; // almost the same as SCREEN_HEIGHT * SCREEN_WIDTH * 4
 
     BITMAPFILEHEADER bfh = {0};
 
@@ -148,7 +148,7 @@ GameBoyWindows::GameBoyWindows()
     m_Logger->SetDoMessageBox(MyMessageBox);
 
     m_Emulator = std::make_unique<Emulator>(m_Logger);
-    m_Emulator->SetCapture(SavePixelsToBitmap);
+    m_Emulator->SetCapture(SavePixelsToBmpFile);
 
 #ifndef USE_SDL
     info.bmiHeader.biSize = sizeof(info.bmiHeader);
@@ -157,7 +157,7 @@ GameBoyWindows::GameBoyWindows()
     info.bmiHeader.biPlanes = 1;
     info.bmiHeader.biBitCount = 32;
     info.bmiHeader.biCompression = BI_RGB;
-    info.bmiHeader.biSizeImage = SCREEN_HEIGHT * SCREEN_WIDTH * 4;
+    info.bmiHeader.biSizeImage = ((((SCREEN_WIDTH * 32) + 31) & ~31) >> 3) * SCREEN_HEIGHT;
     info.bmiHeader.biXPelsPerMeter = 0;
     info.bmiHeader.biYPelsPerMeter = 0;
     info.bmiHeader.biClrUsed = 0;
