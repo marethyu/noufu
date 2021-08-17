@@ -53,6 +53,7 @@ void EmulatorConfig::DefaultSettings()
     m_Settings["BootROMPath"] = "";
     m_Settings["CPULogging"] = "0";
     m_Settings["MMULogging"] = "0";
+    m_Settings["InterruptLogging"] = "0";
     m_Settings["Color0"] = "E0.F8.D0";
     m_Settings["Color1"] = "88.C0.70";
     m_Settings["Color2"] = "34.68.56";

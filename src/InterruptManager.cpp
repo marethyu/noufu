@@ -15,11 +15,20 @@ enum
     HALT_MODE2
 };
 
+static const std::string int_str[5] = {
+    "VBLANK",
+    "LCD_STAT",
+    "TIMER",
+    "SERIAL",
+    "JOYPAD"
+};
+
 InterruptManager::InterruptManager(Emulator *emu)
   : IF(emu->m_MemControl->m_IO[0x0F]),
     IE(emu->m_MemControl->IE)
 {
     m_Emulator = emu;
+    bLoggingEnabled = emu->m_Config->GetValue("InterruptLogging") == "1";
 }
 
 InterruptManager::~InterruptManager()
@@ -50,11 +59,21 @@ bool InterruptManager::GetIME()
 
 void InterruptManager::EnableIME()
 {
+    if (bLoggingEnabled)
+    {
+        m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "InterruptManager::EnableIME", "EI");
+    }
+
     m_IME = true;
 }
 
 void InterruptManager::DisableIME()
 {
+    if (bLoggingEnabled)
+    {
+        m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "InterruptManager::DisableIME", "DI");
+    }
+
     m_IME = false;
 }
 
@@ -63,35 +82,41 @@ bool InterruptManager::SetHaltMode()
     if (m_IME)
     {
         haltMode = HALT_MODE0;
-        return true;
     }
     else if (!m_IME && ((IE & IF) == 0))
     {
         haltMode = HALT_MODE1;
-        return true;
     }
     else if (!m_IME && ((IE & IF) != 0))
     {
         haltMode = HALT_MODE2;
-        return false;
     }
-/*
-#ifndef GUI_MODE
-    std::cerr << "Yo nigga, InterruptManager::SetHaltMode has gone mad!" << std::endl;
-#else
-    LOG_IF_F(WARNING, true, "Yo nigga, InterruptManager::SetHaltMode has gone mad!");
-#endif
-*/
-    return false;
+
+    if (bLoggingEnabled)
+    {
+        m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "InterruptManager::SetHaltMode", "HALT_MODE{}", haltMode);
+    }
+
+    return haltMode == HALT_MODE0 || haltMode == HALT_MODE1;
 }
 
 void InterruptManager::ResetHaltMode()
 {
+    if (bLoggingEnabled)
+    {
+        m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "InterruptManager::ResetHaltMode", "-1");
+    }
+
     haltMode = -1;
 }
 
 void InterruptManager::RequestInterrupt(int i)
 {
+    if (bLoggingEnabled)
+    {
+        m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "InterruptManager::RequestInterrupt", "{} interrupt requested", int_str[i]);
+    }
+
     SET_BIT(IF, i);
 }
 
@@ -111,6 +136,11 @@ void InterruptManager::InterruptRoutine()
         {
             if (m_IME && GET_BIT(IF, i) && GET_BIT(IE, i))
             {
+                if (bLoggingEnabled)
+                {
+                    m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "InterruptManager::InterruptRoutine", "Now handling {}", int_str[i]);
+                }
+
                 m_Emulator->m_CPU->HandleInterrupt(i);
             }
         }

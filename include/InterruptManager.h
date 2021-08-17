@@ -19,6 +19,8 @@ private:
     int haltMode;
 
     Emulator *m_Emulator;
+
+    bool bLoggingEnabled;
 public:
     InterruptManager(Emulator *emu);
     ~InterruptManager();

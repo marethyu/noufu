@@ -18,6 +18,7 @@ private:
     // - BootROMPath
     // - CPULogging
     // - MMULogging
+    // - InterruptLogging
     // - Color0
     // - Color1
     // - Color2
