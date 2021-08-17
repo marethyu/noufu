@@ -41,16 +41,16 @@ static int SavePixelsToBmpFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_H
     bmpInfoHeader.biCompression = BI_RGB;
 
     // Set the height in pixels
-    bmpInfoHeader.biHeight = SCREEN_HEIGHT;
+    bmpInfoHeader.biHeight = SCREEN_HEIGHT * SCREEN_SCALE_FACTOR;
 
     // Width of the Image in pixels
-    bmpInfoHeader.biWidth = SCREEN_WIDTH;
+    bmpInfoHeader.biWidth = SCREEN_WIDTH * SCREEN_SCALE_FACTOR;
 
     // Default number of planes
     bmpInfoHeader.biPlanes = 1;
 
     // Calculate the image size in bytes
-    bmpInfoHeader.biSizeImage = ((((SCREEN_WIDTH * 32) + 31) & ~31) >> 3) * SCREEN_HEIGHT; // almost the same as SCREEN_HEIGHT * SCREEN_WIDTH * 4
+    bmpInfoHeader.biSizeImage = ((((bmpInfoHeader.biWidth * 32) + 31) & ~31) >> 3) * bmpInfoHeader.biHeight; // almost the same as bmpInfoHeader.biWidth * bmpInfoHeader.biHeight * 4
 
     BITMAPFILEHEADER bfh = {0};
 
@@ -102,21 +102,32 @@ static int SavePixelsToBmpFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_H
               NULL);
 
     // Write the RGB Data
+    std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * SCREEN_SCALE_FACTOR * SCREEN_SCALE_FACTOR * 4> cpy;
 
-    std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> cpy;
-
-    // Perform 180 degree rotation and y-axis mirror before that...
+    // Perform Y-axis mirroring and magnification before that...
     for (int i = 0; i < SCREEN_HEIGHT; ++i)
     {
         for (int j = 0; j < SCREEN_WIDTH; ++j)
         {
-            int offset = i * SCREEN_WIDTH * 4 + j * 4;
-            int offset_ = (SCREEN_HEIGHT - i - 1) * SCREEN_WIDTH * 4 + j * 4;
+            int offset = i * SCREEN_WIDTH * 4 + j * 4; // index in pixels array
 
-            cpy[offset_] = pixels[offset];
-            cpy[offset_ + 1] = pixels[offset + 1];
-            cpy[offset_ + 2] = pixels[offset + 2];
-            cpy[offset_ + 3] = pixels[offset + 3];
+            // indexes in cpy array, assuming it is a 2D array
+            int cpy_i = (SCREEN_HEIGHT - i - 1) * SCREEN_SCALE_FACTOR;
+            int cpy_j = j * SCREEN_SCALE_FACTOR;
+
+            // i_ and j_ are added to cpy_i and cpy_j
+            for (int i_ = 0; i_ < SCREEN_SCALE_FACTOR; ++i_)
+            {
+                for (int j_ = 0; j_ < SCREEN_SCALE_FACTOR; ++j_)
+                {
+                    int offset_ = (cpy_i + i_) * (SCREEN_WIDTH * SCREEN_SCALE_FACTOR) * 4 + (cpy_j + j_) * 4;
+
+                    cpy[offset_    ] = pixels[offset];
+                    cpy[offset_ + 1] = pixels[offset + 1];
+                    cpy[offset_ + 2] = pixels[offset + 2];
+                    cpy[offset_ + 3] = pixels[offset + 3];
+                }
+            }
         }
     }
 
