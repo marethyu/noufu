@@ -87,6 +87,11 @@ void SimpleGPU::UpdateMode(int mode)
     STAT |= mode;
 }
 
+int SimpleGPU::GetMode()
+{
+    return STAT & 0b00000011;
+}
+
 void SimpleGPU::UpdateLCDStatus()
 {
     if (!SimpleGPU::bLCDEnabled())
@@ -411,9 +416,48 @@ void SimpleGPU::Update(int cycles)
     }
 }
 
-int SimpleGPU::GetMode()
+uint8_t SimpleGPU::CPUReadVRAM(uint16_t address)
 {
-    return STAT & 0b00000011;
+    if (SimpleGPU::GetMode() == MODE_PIXEL_TRANSFER)
+    {
+        return 0xFF;
+    }
+
+    return m_Emulator->m_MemControl->ReadByte(address);
+}
+
+uint8_t SimpleGPU::CPUReadOAM(uint16_t address)
+{
+    int mode = SimpleGPU::GetMode();
+
+    if (mode == MODE_OAM_SEARCH || mode == MODE_PIXEL_TRANSFER)
+    {
+        return 0xFF;
+    }
+
+    return m_Emulator->m_MemControl->ReadByte(address);
+}
+
+void SimpleGPU::CPUWriteVRAM(uint16_t address, uint8_t data)
+{
+    if (SimpleGPU::GetMode() == MODE_PIXEL_TRANSFER)
+    {
+        return;
+    }
+
+    m_Emulator->m_MemControl->WriteByte(address, data);
+}
+
+void SimpleGPU::CPUWriteOAM(uint16_t address, uint8_t data)
+{
+    int mode = SimpleGPU::GetMode();
+
+    if (mode == MODE_OAM_SEARCH || mode == MODE_PIXEL_TRANSFER)
+    {
+        return;
+    }
+
+    m_Emulator->m_MemControl->WriteByte(address, data);
 }
 
 void SimpleGPU::Debug_PrintStatus()

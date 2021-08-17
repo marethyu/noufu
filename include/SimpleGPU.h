@@ -37,6 +37,7 @@ private:
     bool bVBlankStatInterrupt();
     bool bHBlankStatInterrupt();
     void UpdateMode(int mode);
+    int GetMode();
 
     void UpdateLCDStatus();
     void DrawCurrentLine();
@@ -56,7 +57,14 @@ public:
     void Init();
     void Reset();
     void Update(int cycles);
-    int GetMode();
+
+    // the below functions are used by CPU only
+    uint8_t CPUReadVRAM(uint16_t address);
+    uint8_t CPUReadOAM(uint16_t address);
+    void CPUWriteVRAM(uint16_t address, uint8_t data);
+    void CPUWriteOAM(uint16_t address, uint8_t data);
+
+    void Debug_PrintStatus();
 
     std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> m_Pixels;
 
@@ -71,8 +79,6 @@ public:
     uint8_t &OBP1;
     uint8_t &WY;
     uint8_t &WX;
-
-    void Debug_PrintStatus();
 };
 
 #endif

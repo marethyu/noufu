@@ -15,32 +15,51 @@ static const int RST_ADDR[] = {0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38};
 #define HC8_SUB(A, B, cy) ((((A) & 0x0F) - ((B) & 0x0F) - (cy)) < 0)
 #define CARRY8_SUB(A, B, cy) ((((A) & 0xFF) - ((B) & 0xFF) - (cy)) < 0)
 
-/* TODO prevent accesses to VRAM/OAM during certain PPU modes... maybe when accessing VRAM/OAM, do it thru PPU (PPU is responsible for VRAM/OAM accesses) */
-
 uint8_t CPU::ReadByte(uint16_t address) const
 {
     m_Emulator->Tick();
+
+    if (address >= 0x8000 && address < 0xA000) // VRAM
+    {
+        return m_Emulator->m_GPU->CPUReadVRAM(address);
+    }
+    else if (address >= 0xFE00 && address < 0xFEA0) // OAM
+    {
+        return m_Emulator->m_GPU->CPUReadOAM(address);
+    }
+
     return m_Emulator->m_MemControl->ReadByte(address);
 }
 
 uint16_t CPU::ReadWord(uint16_t address) const
 {
-    m_Emulator->Tick();
-    m_Emulator->Tick();
-    return m_Emulator->m_MemControl->ReadWord(address);
+    uint8_t low = CPU::ReadByte(address);
+    uint8_t high = CPU::ReadByte(address + 1);
+    return (high << 8) | low;
 }
 
 void CPU::WriteByte(uint16_t address, uint8_t data)
 {
     m_Emulator->Tick();
+
+    if (address >= 0x8000 && address < 0xA000) // VRAM
+    {
+        m_Emulator->m_GPU->CPUWriteVRAM(address, data);
+    }
+    else if (address >= 0xFE00 && address < 0xFEA0) // OAM
+    {
+        m_Emulator->m_GPU->CPUWriteOAM(address, data);
+    }
+
     m_Emulator->m_MemControl->WriteByte(address, data);
 }
 
 void CPU::WriteWord(uint16_t address, uint16_t data)
 {
-    m_Emulator->Tick();
-    m_Emulator->Tick();
-    m_Emulator->m_MemControl->WriteWord(address, data);
+    uint8_t high = data >> 8;
+    uint8_t low = data & 0xFF;
+    CPU::WriteByte(address, low);
+    CPU::WriteByte(address + 1, high);
 }
 
 uint8_t CPU::NextByte()
