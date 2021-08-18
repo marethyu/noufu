@@ -57,3 +57,4 @@ clean:
 	if exist bin\cli\noufu.exe del /q bin\cli\noufu.exe
 	if exist bin\gui\gdi\noufu.exe del /q bin\gui\gdi\noufu.exe
 	if exist bin\gui\sdl\noufu.exe del /q bin\gui\sdl\noufu.exe
+	if exist bin\gui\sdl\SDL2.dll del /q bin\gui\sdl\SDL2.dll
