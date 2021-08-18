@@ -37,7 +37,7 @@ static void Initialize()
     logger->SetDoMessageBox(MyMessageBox);
     if (config->InitSettings())
     {
-        logger->DoLog(LOG_WARN_POPUP, "Emulator::Emulator", "The configuration file was not found, so the new one created with default settings.");
+        logger->DoLog(LOG_WARN_POPUP, "WinMain.cpp.Initialize", "The configuration file was not found, so the new one created with default settings.");
     }
 }
 
