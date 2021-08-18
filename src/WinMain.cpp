@@ -3,6 +3,7 @@
 
 #include "Constants.h"
 #include "GameBoyWindows.h"
+#include "Version.h"
 
 #define ID_LOAD_ROM 0
 #define ID_RELOAD_ROM 1
@@ -188,7 +189,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
         case ID_ABOUT:
         {
-            MessageBox(hWnd, TEXT("i have no idea what to write here"), TEXT("About Noufu"), MB_ICONINFORMATION | MB_OK);
+            MessageBox(hWnd,
+                       TEXT("i have no idea what to write here"),
+                       TEXT(fmt::format("About Noufu v{}", CURRENT_VERSION).c_str()),
+                       MB_ICONINFORMATION | MB_OK);
             break;
         }
         }
