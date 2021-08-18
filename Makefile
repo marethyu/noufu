@@ -1,28 +1,11 @@
 CXX = g++
-
 CXXFLAGS = -std=c++2a -Wall -fmax-errors=5
-WIN_FLAGS = -mwindows -Wl,-subsystem,windows --machine-windows
-LINKFLAGS = -lcomdlg32 -lshlwapi
 
 .PHONY: all
 .PHONY: clean
 
 SRC_PATH = ./src/
 INC_PATH = ./include/
-
-# TODO add ./bin/cli/noufu_cli.exe
-
-ifeq ($(SDL), 1)
- CXXFLAGS += -D USE_SDL
- LINKFLAGS += -lSDL2
- OBJ_PATH = ./obj/sdl/
- TARGET = ./bin/gui/sdl/noufu.exe
-else
- LINKFLAGS += -lgdi32
- OBJ_PATH = ./obj/gdi/
- TARGET = ./bin/gui/gdi/noufu.exe
- SDL=0
-endif
 
 OBJ1 := CPUOpcodes.o \
         CPU.o \
@@ -32,9 +15,28 @@ OBJ1 := CPUOpcodes.o \
         JoyPad.o \
         SimpleGPU.o \
         Emulator.o \
-        EmulatorConfig.o \
-        GameBoyWindows.o \
-        WinMain.o
+        EmulatorConfig.o
+
+ifeq ($(DEBUG), 1)
+ OBJ1 += DebuggerMain.o
+ OBJ_PATH = ./obj/cli/
+ TARGET = ./bin/cli/noufu.exe
+else
+ OBJ1 += GameBoyWindows.o WinMain.o
+ LINKFLAGS = -lcomdlg32 -lshlwapi -mwindows -Wl,-subsystem,windows --machine-windows
+ ifeq ($(SDL), 1)
+  CXXFLAGS += -D USE_SDL
+  LINKFLAGS += -lSDL2
+  OBJ_PATH = ./obj/gui/sdl/
+  TARGET = ./bin/gui/sdl/noufu.exe
+ else
+  LINKFLAGS += -lgdi32
+  OBJ_PATH = ./obj/gui/gdi/
+  TARGET = ./bin/gui/gdi/noufu.exe
+  SDL=0
+ endif
+endif
+
 OBJ := $(patsubst %,$(OBJ_PATH)%,$(OBJ1))
 
 all: $(TARGET)
@@ -42,15 +44,16 @@ all: $(TARGET)
 
 $(TARGET): $(OBJ)
 	@echo [INFO] Creating Binary Executable [$(TARGET)]
-	@$(CXX) -o $@ $^ $(WIN_FLAGS) $(LINKFLAGS)
+	@$(CXX) -o $@ $^ $(LINKFLAGS)
 
 $(OBJ_PATH)%.o: $(SRC_PATH)%.cpp
 	@echo [CXX] $<
 	@$(CXX) $(CXXFLAGS) -o $@ -c $< -I $(INC_PATH)
 
 clean:
-	del /q obj\gdi\*.o
-	del /q obj\sdl\*.o
-	del /q bin\gui\sdl\noufu.exe
-	del /q bin\gui\gdi\noufu.exe
-	del /q bin\cli\noufu_cli.exe
+	if exist obj\cli\*.o del /q obj\cli\*.o
+	if exist obj\gui\gdi\*.o del /q obj\gui\gdi\*.o
+	if exist obj\gui\sdl\*.o del /q obj\gui\sdl\*.o
+	if exist bin\cli\noufu.exe del /q bin\cli\noufu.exe
+	if exist bin\gui\gdi\noufu.exe del /q bin\gui\gdi\noufu.exe
+	if exist bin\gui\sdl\noufu.exe del /q bin\gui\sdl\noufu.exe
