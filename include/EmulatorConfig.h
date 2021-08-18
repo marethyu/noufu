@@ -16,6 +16,7 @@ public:
     std::string GetValue(const std::string& key);
 private:
     // Available settings:
+    // - ScreenScaleFactor
     // - UseBootROM
     // - BootROMPath
     // - CPULogging

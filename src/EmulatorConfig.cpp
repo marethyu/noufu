@@ -54,6 +54,7 @@ std::string EmulatorConfig::GetValue(const std::string& key)
 
 void EmulatorConfig::DoDefaultSettings()
 {
+    m_Settings["ScreenScaleFactor"] = "3";
     m_Settings["UseBootROM"] = "0";
     m_Settings["BootROMPath"] = "";
     m_Settings["CPULogging"] = "0";

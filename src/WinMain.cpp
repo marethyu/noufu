@@ -253,10 +253,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return 0;
     }
 
+    int screenScale = std::stoi(config->GetValue("ScreenScaleFactor"));
+
     rcClient.left = 0;
     rcClient.top = 0;
-    rcClient.right = SCREEN_WIDTH * SCREEN_SCALE_FACTOR;
-    rcClient.bottom = SCREEN_HEIGHT * SCREEN_SCALE_FACTOR;
+    rcClient.right = SCREEN_WIDTH * screenScale;
+    rcClient.bottom = SCREEN_HEIGHT * screenScale;
 
     AdjustWindowRectEx(&rcClient, style, TRUE, 0);
 

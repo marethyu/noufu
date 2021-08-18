@@ -14,7 +14,7 @@
 #include "JoyPad.h"
 #include "Logger.h"
 
-typedef int (*CaptureFunc)(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4>&, const std::string&);
+typedef int (*CaptureFunc)(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4>&, int, const std::string&);
 
 class Emulator
 {

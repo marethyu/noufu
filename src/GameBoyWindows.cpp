@@ -8,7 +8,7 @@
 
 // Save the pixel data to a bmp file
 // Adapted from https://www.technical-recipes.com/2011/creating-bitmap-files-from-raw-pixel-data-in-c/
-static int SavePixelsToBmpFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> &pixels, const std::string &fname)
+static int SavePixelsToBmpFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> &pixels, int screenScale, const std::string &fname)
 {
     // Some basic bitmap parameters
     unsigned long headers_size = sizeof(BITMAPFILEHEADER) +
@@ -32,10 +32,10 @@ static int SavePixelsToBmpFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_H
     bmpInfoHeader.biCompression = BI_RGB;
 
     // Set the height in pixels
-    bmpInfoHeader.biHeight = SCREEN_HEIGHT * SCREEN_SCALE_FACTOR;
+    bmpInfoHeader.biHeight = SCREEN_HEIGHT * screenScale;
 
     // Width of the Image in pixels
-    bmpInfoHeader.biWidth = SCREEN_WIDTH * SCREEN_SCALE_FACTOR;
+    bmpInfoHeader.biWidth = SCREEN_WIDTH * screenScale;
 
     // Default number of planes
     bmpInfoHeader.biPlanes = 1;
@@ -93,7 +93,7 @@ static int SavePixelsToBmpFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_H
               NULL);
 
     // Write the RGB Data
-    std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * SCREEN_SCALE_FACTOR * SCREEN_SCALE_FACTOR * 4> cpy;
+    std::vector<uint8_t> cpy(SCREEN_WIDTH * SCREEN_HEIGHT * screenScale * screenScale * 4);
 
     // Perform Y-axis mirroring and magnification before that...
     for (int i = 0; i < SCREEN_HEIGHT; ++i)
@@ -103,15 +103,15 @@ static int SavePixelsToBmpFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_H
             int offset = i * SCREEN_WIDTH * 4 + j * 4; // index in pixels array
 
             // indexes in cpy array, assuming it is a 2D array
-            int cpy_i = (SCREEN_HEIGHT - i - 1) * SCREEN_SCALE_FACTOR;
-            int cpy_j = j * SCREEN_SCALE_FACTOR;
+            int cpy_i = (SCREEN_HEIGHT - i - 1) * screenScale;
+            int cpy_j = j * screenScale;
 
             // i_ and j_ are added to cpy_i and cpy_j
-            for (int i_ = 0; i_ < SCREEN_SCALE_FACTOR; ++i_)
+            for (int i_ = 0; i_ < screenScale; ++i_)
             {
-                for (int j_ = 0; j_ < SCREEN_SCALE_FACTOR; ++j_)
+                for (int j_ = 0; j_ < screenScale; ++j_)
                 {
-                    int offset_ = (cpy_i + i_) * (SCREEN_WIDTH * SCREEN_SCALE_FACTOR) * 4 + (cpy_j + j_) * 4;
+                    int offset_ = (cpy_i + i_) * (SCREEN_WIDTH * screenScale) * 4 + (cpy_j + j_) * 4;
 
                     cpy[offset_    ] = pixels[offset];
                     cpy[offset_ + 1] = pixels[offset + 1];
@@ -123,7 +123,7 @@ static int SavePixelsToBmpFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_H
     }
 
     WriteFile(hFile,
-              cpy.data(),
+              &cpy[0],
               bmpInfoHeader.biSizeImage,
               &dwWritten,
               NULL);

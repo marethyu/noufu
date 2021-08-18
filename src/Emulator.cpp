@@ -67,7 +67,7 @@ void Emulator::SetCapture(CaptureFunc capture)
 
 int Emulator::CaptureScreen(const std::string &fname)
 {
-    int ret = Capture(m_GPU->m_Pixels, fname);
+    int ret = Capture(m_GPU->m_Pixels, std::stoi(m_Config->GetValue("ScreenScaleFactor")), fname);
 
     if (ret)
     {
