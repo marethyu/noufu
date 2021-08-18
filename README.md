@@ -19,3 +19,39 @@ To clean, type
 ```
 mingw32-make clean
 ```
+
+## Colour Palettes
+
+Colours can be modified in `config.ini`.
+
+GameBoy Green (default)
+```
+Color0=E0.F8.D0
+Color1=88.C0.70
+Color2=34.68.56
+Color3=08.18.20
+```
+
+Greyscale
+```
+Color0=FF.FF.FF
+Color1=A9.A9.A9
+Color2=54.54.54
+Color3=00.00.00
+```
+
+SpazeHaze
+```
+Color0=F8.E3.C4
+Color1=CC.34.95
+Color2=6B.1F.B1
+Color3=0B.06.30
+```
+
+Mist GB
+```
+Color0=C4.F0.C2
+Color1=5A.B9.A8
+Color2=1E.60.6E
+Color3=2D.1B.00
+```
