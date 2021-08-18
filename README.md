@@ -10,10 +10,13 @@ Requirements:
 - fmt v8.0.0 (preinstalled in `include/`)
 - SDL v2.0.12 (Optional)
 
-To build, type (remove `SDL=1` if you don't have SDL installed)
+Run `setup.bat` first before anything else.
+
+To build, type
 ```
 mingw32-make SDL=1
 ```
+Remove `SDL=1` if you don't have SDL installed. Use `DEBUG=1` for building a debug release.
 
 To clean, type
 ```
