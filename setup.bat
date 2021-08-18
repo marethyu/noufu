@@ -9,4 +9,5 @@ if not exist "bin/gui/sdl" mkdir "bin/gui/sdl"
 if not exist "obj/gui/gdi" mkdir "obj/gui/gdi"
 if not exist "bin/gui/gdi" mkdir "bin/gui/gdi"
 
+copy /Y libs\SDL2.dll bin\cli
 copy /Y libs\SDL2.dll bin\gui\sdl

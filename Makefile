@@ -18,12 +18,13 @@ OBJ1 := CPUOpcodes.o \
         EmulatorConfig.o
 
 ifeq ($(DEBUG), 1)
+ LINKFLAGS += -lSDL2
  OBJ1 += DebuggerMain.o
  OBJ_PATH = ./obj/cli/
  TARGET = ./bin/cli/noufu.exe
 else
  OBJ1 += GameBoyWindows.o WinMain.o
- LINKFLAGS = -lcomdlg32 -lshlwapi -mwindows -Wl,-subsystem,windows --machine-windows
+ LINKFLAGS = -mwindows -Wl,-subsystem,windows --machine-windows -lcomdlg32 -lshlwapi
  ifeq ($(SDL), 1)
   CXXFLAGS += -D USE_SDL
   LINKFLAGS += -lSDL2
