@@ -3,16 +3,24 @@
 
 #include "EmulatorConfig.h"
 
-EmulatorConfig::EmulatorConfig(bool &bConfigFileExists)
+EmulatorConfig::EmulatorConfig()
+{
+    
+}
+
+EmulatorConfig::~EmulatorConfig()
+{
+    
+}
+
+bool EmulatorConfig::InitSettings()
 {
     std::ifstream istream("config.ini", std::ios::in);
     std::string line;
 
     if (!istream)
     {
-        bConfigFileExists = false;
-
-        EmulatorConfig::DefaultSettings();
+        EmulatorConfig::DoDefaultSettings();
 
         std::ofstream config("config.ini");
 
@@ -23,7 +31,7 @@ EmulatorConfig::EmulatorConfig(bool &bConfigFileExists)
 
         config.close();
 
-        return;
+        return true;
     }
 
     while (std::getline(istream, line))
@@ -35,11 +43,8 @@ EmulatorConfig::EmulatorConfig(bool &bConfigFileExists)
     }
 
     istream.close();
-}
 
-EmulatorConfig::~EmulatorConfig()
-{
-    
+    return false;
 }
 
 std::string EmulatorConfig::GetValue(const std::string& key)
@@ -47,7 +52,7 @@ std::string EmulatorConfig::GetValue(const std::string& key)
     return m_Settings[key];
 }
 
-void EmulatorConfig::DefaultSettings()
+void EmulatorConfig::DoDefaultSettings()
 {
     m_Settings["UseBootROM"] = "0";
     m_Settings["BootROMPath"] = "";

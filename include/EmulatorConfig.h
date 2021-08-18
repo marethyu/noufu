@@ -7,9 +7,11 @@
 class EmulatorConfig
 {
 public:
-    // bConfigFileExists - used for logging purposes
-    EmulatorConfig(bool &bConfigFileExists);
+    EmulatorConfig();
     ~EmulatorConfig();
+
+    // Returns true if config.ini is created
+    bool InitSettings();
 
     std::string GetValue(const std::string& key);
 private:
@@ -25,7 +27,7 @@ private:
     // - Color3
     std::map<std::string, std::string> m_Settings;
 
-    void DefaultSettings();
+    void DoDefaultSettings();
 };
 
 #endif

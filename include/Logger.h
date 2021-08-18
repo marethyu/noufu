@@ -37,7 +37,7 @@ public:
             throw std::runtime_error("Logger::Logger: Unable to create a file for logging!");
         }
 
-        Logger::DoLog(LOG_INFO, "Logger::Logger", "{} created", log_file);
+        fout << fmt::format("{} created", log_file) << std::endl;
     }
 
     ~Logger()

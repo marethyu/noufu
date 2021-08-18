@@ -19,7 +19,7 @@ typedef int (*CaptureFunc)(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGH
 class Emulator
 {
 public:
-    Emulator(std::shared_ptr<Logger> logger);
+    Emulator(std::shared_ptr<Logger> logger, std::shared_ptr<EmulatorConfig> config);
     ~Emulator();
 
     void InitComponents();
@@ -34,8 +34,8 @@ public:
     void Debug_StepTill(std::vector<char> &blargg_serial, uint16_t x);
     void Debug_PrintEmulatorStatus();
 
-    std::unique_ptr<EmulatorConfig> m_Config;
     std::shared_ptr<Logger> m_EmulatorLogger;
+    std::shared_ptr<EmulatorConfig> m_Config;
 
     // All components
     std::unique_ptr<CPU> m_CPU;

@@ -29,7 +29,7 @@ private:
 
     void LogSystemInfo();
 public:
-    GameBoyWindows();
+    GameBoyWindows(std::shared_ptr<Logger> logger, std::shared_ptr<EmulatorConfig> config);
     ~GameBoyWindows();
 
     void Initialize();

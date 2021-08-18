@@ -6,15 +6,6 @@
 #define FMT_HEADER_ONLY
 #include "fmt/format.h"
 
-static void MyMessageBox(Severity severity, const char *message)
-{
-    MessageBox(NULL,
-               TEXT(message),
-               TEXT(severity_str[severity].c_str()),
-               MB_OK | (severity == LOG_WARN_POPUP ? MB_ICONWARNING :
-                                                     MB_ICONERROR));
-}
-
 // Save the pixel data to a bmp file
 // Adapted from https://www.technical-recipes.com/2011/creating-bitmap-files-from-raw-pixel-data-in-c/
 static int SavePixelsToBmpFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> &pixels, const std::string &fname)
@@ -153,12 +144,11 @@ void GameBoyWindows::LogSystemInfo()
 #endif
 }
 
-GameBoyWindows::GameBoyWindows()
+GameBoyWindows::GameBoyWindows(std::shared_ptr<Logger> logger, std::shared_ptr<EmulatorConfig> config)
 {
-    m_Logger = std::make_shared<Logger>("emulation_log.txt");
-    m_Logger->SetDoMessageBox(MyMessageBox);
+    m_Logger = logger;
 
-    m_Emulator = std::make_unique<Emulator>(m_Logger);
+    m_Emulator = std::make_unique<Emulator>(logger, config);
     m_Emulator->SetCapture(SavePixelsToBmpFile);
 
 #ifndef USE_SDL

@@ -1,18 +1,10 @@
 #include "Constants.h"
 #include "Emulator.h"
 
-Emulator::Emulator(std::shared_ptr<Logger> logger)
+Emulator::Emulator(std::shared_ptr<Logger> logger, std::shared_ptr<EmulatorConfig> config)
 {
     m_EmulatorLogger = logger;
-
-    bool bConfigFileExists = true;
-
-    m_Config = std::make_unique<EmulatorConfig>(bConfigFileExists);
-
-    if (!bConfigFileExists)
-    {
-        m_EmulatorLogger->DoLog(LOG_WARN_POPUP, "Emulator::Emulator", "The configuration file was not found, so the new one created with default settings.");
-    }
+    m_Config = config;
 
     m_CPU = std::make_unique<CPU>(this);
     m_MemControl = std::make_unique<MemoryController>(this);

@@ -17,7 +17,30 @@
 // Delay between updates
 static const int UPDATE_INTERVAL = 14; // 1000 ms / 59.72 fps = 16.744 (adjusted for win32 timer)
 
-void StartTimer(HWND hWnd)
+std::shared_ptr<Logger> logger = std::make_shared<Logger>("emulation_log.txt");
+std::shared_ptr<EmulatorConfig> config = std::make_shared<EmulatorConfig>();
+
+static void MyMessageBox(Severity severity, const char *message)
+{
+    MessageBox(NULL,
+               TEXT(message),
+               TEXT(severity_str[severity].c_str()),
+               MB_OK | (severity == LOG_WARN_POPUP ? MB_ICONWARNING :
+                                                     MB_ICONERROR));
+}
+
+static void Initialize()
+{
+    std::srand(unsigned(std::time(NULL)));
+
+    logger->SetDoMessageBox(MyMessageBox);
+    if (config->InitSettings())
+    {
+        logger->DoLog(LOG_WARN_POPUP, "Emulator::Emulator", "The configuration file was not found, so the new one created with default settings.");
+    }
+}
+
+static void StartTimer(HWND hWnd)
 {
     if(!SetTimer(hWnd, ID_TIMER, UPDATE_INTERVAL, NULL))
     {
@@ -28,7 +51,7 @@ void StartTimer(HWND hWnd)
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    static GameBoyWindows gb;
+    static GameBoyWindows gb(logger, config);
     static HMENU hMenuBar;
     static HMENU hFile, hHelp;
     static bool paused;
@@ -201,7 +224,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
-    std::srand(unsigned(std::time(NULL)));
+    Initialize();
 
     const TCHAR szClassName[] = TEXT("MyClass");
 
