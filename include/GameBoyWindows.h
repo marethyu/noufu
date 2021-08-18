@@ -6,7 +6,6 @@
 #include <Windows.h>
 
 #ifdef USE_SDL
-#define SDL_MAIN_HANDLED
 #include <SDL2/SDL.h>
 #endif
 
