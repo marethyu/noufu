@@ -46,7 +46,7 @@ void PPU::TickFetcher()
     {
         uint16_t tileMap = PPU::bBackgroundTileMap() ? 0x9C00 : 0x9800;
         uint16_t xOffset = (fetcherX + (SCX / 8)) % 32;
-        uint16_t yOffset = ((LY + SCY) / 8) * 32;
+        uint16_t yOffset = (((LY + SCY) % 256) / 8) * 32;
 
         addr = tileMap + ((xOffset + yOffset) & 0x3FF);
         tileNo = m_Emulator->m_MemControl->ReadByte(addr);
