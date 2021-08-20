@@ -251,7 +251,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else if (address == 0xFF44)
     {
-        m_Emulator->m_GPU->LY = 0;
+        m_Emulator->m_PPU->LY = 0;
     }
     else if (address == 0xFF46)
     {

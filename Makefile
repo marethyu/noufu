@@ -13,7 +13,7 @@ OBJ1 := CPUOpcodes.o \
         MemoryController.o \
         Timer.o \
         JoyPad.o \
-        SimpleGPU.o \
+        PPU.o \
         Emulator.o \
         EmulatorConfig.o
 

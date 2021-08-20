@@ -10,7 +10,7 @@ Emulator::Emulator(std::shared_ptr<Logger> logger, std::shared_ptr<EmulatorConfi
     m_MemControl = std::make_unique<MemoryController>(this);
     m_IntManager = std::make_unique<InterruptManager>(this);
     m_Timer = std::make_unique<Timer>(this);
-    m_GPU = std::make_unique<SimpleGPU>(this);
+    m_PPU = std::make_unique<PPU>(this);
     m_JoyPad = std::make_unique<JoyPad>(this);
 }
 
@@ -25,7 +25,7 @@ void Emulator::InitComponents()
     m_CPU->Init();
     m_IntManager->Init();
     m_Timer->Init();
-    m_GPU->Init();
+    m_PPU->Init();
     m_JoyPad->Init();
     m_TotalCycles = m_PrevTotalCycles = 0;
 }
@@ -36,7 +36,7 @@ void Emulator::ResetComponents()
     m_CPU->Reset();
     m_IntManager->Reset();
     m_Timer->Reset();
-    m_GPU->Reset();
+    m_PPU->Reset();
     m_JoyPad->Reset();
     m_TotalCycles = m_PrevTotalCycles = 0;
 }
@@ -48,7 +48,7 @@ void Emulator::Update()
         int initial_cycles = m_TotalCycles;
         m_CPU->Step();
         int cycles = m_TotalCycles - initial_cycles;
-        m_GPU->Update(cycles);
+        m_PPU->Update(cycles);
         m_Timer->Update(cycles);
     }
 
@@ -67,7 +67,7 @@ void Emulator::SetCapture(CaptureFunc capture)
 
 int Emulator::CaptureScreen(const std::string &fname)
 {
-    int ret = Capture(m_GPU->m_Pixels, std::stoi(m_Config->GetValue("ScreenScaleFactor")), fname);
+    int ret = Capture(m_PPU->m_Pixels, std::stoi(m_Config->GetValue("ScreenScaleFactor")), fname);
 
     if (ret)
     {
@@ -93,7 +93,7 @@ void Emulator::Debug_Step(std::vector<char> &blargg_serial, int times)
         int initial_cycles = m_TotalCycles;
         m_CPU->Step();
         int cycles = m_TotalCycles - initial_cycles;
-        m_GPU->Update(cycles);
+        m_PPU->Update(cycles);
         m_Timer->Update(cycles);
 
         // blarggs test - serial output
@@ -118,6 +118,6 @@ void Emulator::Debug_PrintEmulatorStatus()
     m_CPU->Debug_PrintStatus();
     m_IntManager->Debug_PrintStatus();
     m_Timer->Debug_PrintStatus();
-    m_GPU->Debug_PrintStatus();
+    m_PPU->Debug_PrintStatus();
     m_JoyPad->Debug_PrintStatus();
 }

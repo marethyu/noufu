@@ -21,11 +21,11 @@ uint8_t CPU::ReadByte(uint16_t address) const
 
     if (address >= 0x8000 && address < 0xA000) // VRAM
     {
-        return m_Emulator->m_GPU->CPUReadVRAM(address);
+        return m_Emulator->m_PPU->CPUReadVRAM(address);
     }
     else if (address >= 0xFE00 && address < 0xFEA0) // OAM
     {
-        return m_Emulator->m_GPU->CPUReadOAM(address);
+        return m_Emulator->m_PPU->CPUReadOAM(address);
     }
 
     return m_Emulator->m_MemControl->ReadByte(address);
@@ -44,11 +44,11 @@ void CPU::WriteByte(uint16_t address, uint8_t data)
 
     if (address >= 0x8000 && address < 0xA000) // VRAM
     {
-        m_Emulator->m_GPU->CPUWriteVRAM(address, data);
+        m_Emulator->m_PPU->CPUWriteVRAM(address, data);
     }
     else if (address >= 0xFE00 && address < 0xFEA0) // OAM
     {
-        m_Emulator->m_GPU->CPUWriteOAM(address, data);
+        m_Emulator->m_PPU->CPUWriteOAM(address, data);
     }
 
     m_Emulator->m_MemControl->WriteByte(address, data);

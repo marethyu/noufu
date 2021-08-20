@@ -10,7 +10,7 @@
 #include "MemoryController.h"
 #include "InterruptManager.h"
 #include "Timer.h"
-#include "SimpleGPU.h"
+#include "PPU.h"
 #include "JoyPad.h"
 #include "Logger.h"
 
@@ -42,7 +42,7 @@ public:
     std::unique_ptr<MemoryController> m_MemControl;
     std::unique_ptr<InterruptManager> m_IntManager;
     std::unique_ptr<Timer> m_Timer;
-    std::unique_ptr<SimpleGPU> m_GPU;
+    std::unique_ptr<PPU> m_PPU;
     std::unique_ptr<JoyPad> m_JoyPad;
 private:
     int m_TotalCycles; // T-cycles
