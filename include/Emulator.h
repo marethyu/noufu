@@ -6,13 +6,14 @@
 #include <vector>
 
 #include "EmulatorConfig.h"
-#include "CPU.h"
 #include "MemoryController.h"
 #include "InterruptManager.h"
 #include "Timer.h"
-#include "PPU.h"
 #include "JoyPad.h"
 #include "Logger.h"
+
+#include "cpu/CPU.h"
+#include "ppu/PPU.h"
 
 typedef int (*CaptureFunc)(const std::vector<uint8_t>&, int, const std::string&);
 

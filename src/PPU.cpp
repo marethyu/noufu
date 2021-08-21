@@ -4,11 +4,12 @@
 
 #include "BitMagic.h"
 #include "Emulator.h"
-#include "PPU.h"
-#include "PixelFetcher.h"
+
+#include "ppu/PPU.h"
+#include "ppu/PixelFetcher.h"
 
 #define FMT_HEADER_ONLY
-#include "fmt/format.h"
+#include "3rdparty/fmt/format.h"
 
 enum
 {

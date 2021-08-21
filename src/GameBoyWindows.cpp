@@ -4,7 +4,7 @@
 #include "GameBoyWindows.h"
 
 #define FMT_HEADER_ONLY
-#include "fmt/format.h"
+#include "3rdparty/fmt/format.h"
 
 // Save the pixel data to a bmp file
 // Adapted from https://www.technical-recipes.com/2011/creating-bitmap-files-from-raw-pixel-data-in-c/

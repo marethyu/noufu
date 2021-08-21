@@ -1,4 +1,4 @@
-#include "PixelFIFO.h"
+#include "ppu/PixelFIFO.h"
 
 PixelFIFO::PixelFIFO()
 {

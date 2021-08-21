@@ -12,7 +12,7 @@
 #include "Version.h"
 
 #define FMT_HEADER_ONLY
-#include "fmt/format.h"
+#include "3rdparty/fmt/format.h"
 
 #define CMD_NIL -2
 #define CMD_QUIT -1

@@ -8,7 +8,7 @@
 #include "MemoryController.h"
 
 #define FMT_HEADER_ONLY
-#include "fmt/format.h"
+#include "3rdparty/fmt/format.h"
 
 void MemoryController::InitBootROM()
 {

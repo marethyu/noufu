@@ -5,7 +5,7 @@
 #include "InterruptManager.h"
 
 #define FMT_HEADER_ONLY
-#include "fmt/format.h"
+#include "3rdparty/fmt/format.h"
 
 // For halt behaviour, please read section 4.10. in https://github.com/AntonioND/giibiiadvance/blob/master/docs/TCAGBD.pdf
 enum

@@ -5,7 +5,7 @@
 #include "Timer.h"
 
 #define FMT_HEADER_ONLY
-#include "fmt/format.h"
+#include "3rdparty/fmt/format.h"
 
 Timer::Timer(Emulator *emu)
   : TIMA(emu->m_MemControl->m_IO[0x05]),

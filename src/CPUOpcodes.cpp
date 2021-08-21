@@ -1,8 +1,9 @@
 #include <stdexcept>
 
 #include "BitMagic.h"
-#include "CPU.h"
 #include "Emulator.h"
+
+#include "cpu/CPU.h"
 
 static const int HL_add[] = {0, 0, 1, -1};
 static const int RST_ADDR[] = {0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38};

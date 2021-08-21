@@ -1,12 +1,13 @@
 #include <iostream>
 
 #include "BitMagic.h"
-#include "CPU.h"
-#include "CPUDebugInfo.h"
 #include "Emulator.h"
 
+#include "cpu/CPU.h"
+#include "cpu/CPUDebugInfo.h"
+
 #define FMT_HEADER_ONLY
-#include "fmt/format.h"
+#include "3rdparty/fmt/format.h"
 
 static const uint8_t int_vectors[5] = {
     0x40,

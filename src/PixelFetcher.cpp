@@ -1,6 +1,7 @@
 #include "BitMagic.h"
 #include "Emulator.h"
-#include "PixelFetcher.h"
+
+#include "ppu/PixelFetcher.h"
 
 enum
 {
