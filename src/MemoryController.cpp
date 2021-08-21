@@ -249,9 +249,13 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
             m_Emulator->m_Timer->UpdateFreq();
         }
     }
+    else if (address == 0xFF41)
+    {
+        m_IO[0x41] = data & 0b1111000;
+    }
     else if (address == 0xFF44)
     {
-        m_Emulator->m_PPU->LY = 0;
+        m_IO[0x44] = 0; // reset LY
     }
     else if (address == 0xFF46)
     {

@@ -2,7 +2,8 @@
 #define _PPU_H_
 
 #include <array>
-#include <queue>
+#include <deque>
+#include <memory>
 #include <string>
 
 #include "Constants.h"
@@ -15,34 +16,43 @@ struct rgb_tuple
     uint8_t b;
 };
 
-struct Pixel
+struct Sprite
 {
-    int colourNum;
+    uint8_t x; // raw
+    uint8_t y; // raw
+    uint8_t tileIndex;
+    uint8_t attr;
+    uint16_t oamAddr;
+
+    bool operator<(const Sprite &other)
+    {
+        if (x == other.x)
+        {
+            return oamAddr < other.oamAddr;
+        }
+
+        return x < other.x;
+    }
 };
+
+class PixelFetcher;
 
 class PPU : public GBComponent
 {
+    friend class PixelFetcher;
 private:
     Emulator *m_Emulator;
 
-    bool bResetted; // true if LCDC.7 is 0, false otherwise
-    int nDots;      // count number of dots passed in the current scanline (max: 456)
+    rgb_tuple gb_colours[4];                // colour palette
+    bool bResetted;                         // true if LCDC.7 is 0, false otherwise
+    int nDots;                              // count number of dots passed in the current scanline (max: 456)
+    std::deque<Sprite> oamBuffer;           // sprite OAM buffer (filled during OAM search phase)
 
-    /** Pixel fetcher variables **/
-    int fetcherX;               // can be understood as an X-position in an 32x32 tile map
-    int LX;                     // it's like LY but for X-coord (max: 160)
-    int pf_state;               // state of pixel fetcher
-    uint16_t addr;              // temp variable for use in PPU::TickFetcher
-    uint8_t tileNo;             // tile number (set in PF_GET_TILE_NO mode)
-    uint8_t tileLo;             // the lower byte of a tile (set in PF_GET_TDATA_LO)
-    uint8_t tileHi;             // the upper byte of a tile (set in PF_GET_TDATA_HI)
-    int ticks;                  // used to make sure that the fetcher runs every 2 dots
-    std::queue<Pixel> bgFIFO;   // background FIFO (TODO implement and use a circular queue)
+    int LX;                                 // it's like LY but for X-coord (max: 160)
+    int WLY;                                // window internal line counter
+    bool wyTrigger;                         // true when LY=WY
 
-    void InitFetcher();
-    void TickFetcher();
-
-    rgb_tuple gb_colours[4]; // colour palette
+    std::unique_ptr<PixelFetcher> pixFetcher;
 
     /** LCDC functions **/
     // https://gbdev.io/pandocs/LCDC.html
@@ -78,8 +88,6 @@ private:
 
     /** Misc **/
     void InitRGBTuple(rgb_tuple &tup, const std::string &colour_info);
-    rgb_tuple GetColour(int colourNum, uint8_t palette);
-    int GetValue(uint8_t palette, int hi, int lo);
     void PrintPalette(uint8_t palette);
 public:
     PPU(Emulator *emu);

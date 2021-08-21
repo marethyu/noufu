@@ -5,17 +5,10 @@
 #include "BitMagic.h"
 #include "Emulator.h"
 #include "PPU.h"
+#include "PixelFetcher.h"
 
 #define FMT_HEADER_ONLY
 #include "fmt/format.h"
-
-enum
-{
-    PF_GET_TILE_NO = 0,
-    PF_GET_TDATA_LO,
-    PF_GET_TDATA_HI,
-    PF_PUSH
-};
 
 enum
 {
@@ -24,74 +17,6 @@ enum
     MODE_OAM_SEARCH,
     MODE_PIXEL_TRANSFER
 };
-
-void PPU::InitFetcher()
-{
-    fetcherX = 0;
-    LX = -(SCX % 8); // (SCX % 8) redundant background pixels will be discarded later...
-    pf_state = PF_GET_TILE_NO;
-    ticks = 0;
-    bgFIFO = std::queue<Pixel>();
-}
-
-void PPU::TickFetcher()
-{
-    ticks++;
-    if (ticks < 2) return;
-    ticks = 0;
-
-    switch (pf_state)
-    {
-    case PF_GET_TILE_NO:
-    {
-        uint16_t tileMap = PPU::bBackgroundTileMap() ? 0x9C00 : 0x9800;
-        uint16_t xOffset = (fetcherX + (SCX / 8)) % 32;
-        uint16_t yOffset = (((LY + SCY) % 256) / 8) * 32;
-
-        addr = tileMap + ((xOffset + yOffset) & 0x3FF);
-        tileNo = m_Emulator->m_MemControl->ReadByte(addr);
-        pf_state = PF_GET_TDATA_LO;
-        break;
-    }
-    case PF_GET_TDATA_LO:
-    {
-        bool useSigned = !PPU::bBackgroundAndWindowTileData();
-        uint16_t tileData = useSigned ? 0x8800 : 0x8000;
-        uint16_t offset1 = (useSigned ? int8_t(tileNo): tileNo) * 16;
-        uint16_t offset2 = ((LY + SCY) % 8) * 2;
-
-        addr = tileData + offset1 + offset2;
-        tileLo = m_Emulator->m_MemControl->ReadByte(addr);
-        pf_state = PF_GET_TDATA_HI;
-        break;
-    }
-    case PF_GET_TDATA_HI:
-    {
-        tileHi = m_Emulator->m_MemControl->ReadByte(addr + 1);
-        pf_state = PF_PUSH;
-        break;
-    }
-    case PF_PUSH:
-    {
-        if (bgFIFO.size() == 0)
-        {
-            for (int bit = 7; bit >= 0; --bit)
-            {
-                int colourNum = (GET_BIT(tileHi, bit) << 1) | GET_BIT(tileLo, bit);
-                bgFIFO.push(Pixel{colourNum});
-            }
-
-            fetcherX++;
-            pf_state = PF_GET_TILE_NO;
-        }
-        else
-        {
-            pf_state = PF_PUSH;
-        }
-        break;
-    }
-    }
-}
 
 bool PPU::bLCDEnabled()
 {
@@ -186,12 +111,13 @@ void PPU::SwitchMode(int mode)
     {
         PPU::SetMode(MODE_OAM_SEARCH);
         stat_irq = bOAMStatInterrupt();
+        oamBuffer.clear();
         break;
     }
     case MODE_PIXEL_TRANSFER:
     {
         PPU::SetMode(MODE_PIXEL_TRANSFER);
-        PPU::InitFetcher();
+        pixFetcher->InitFetcher();
         break;
     }
     case MODE_VBLANK:
@@ -220,34 +146,64 @@ int PPU::GetMode()
     return STAT & 0b00000011;
 }
 
+// https://hacktixme.ga/GBEDG/ppu/#oam-scan-mode-2
 void PPU::DoOAMSearch()
 {
+    if (!wyTrigger && nDots == 0)
+    {
+        wyTrigger = LY == WY;
+    }
+
+    if (nDots % 2 == 0)
+    {
+        uint16_t address = 0xFE00 + (nDots / 2) * 4;
+
+        uint8_t YPos = m_Emulator->m_MemControl->ReadByte(address);
+        uint8_t XPos = m_Emulator->m_MemControl->ReadByte(address + 1);
+        uint8_t tileIndex = m_Emulator->m_MemControl->ReadByte(address + 2);
+        uint8_t attributes = m_Emulator->m_MemControl->ReadByte(address + 3);
+
+        uint8_t spriteHeight = PPU::bSprite8x16() ? 16 : 8;
+
+        if (XPos > 0 && (LY + 16) >= YPos && (LY + 16) < (YPos + spriteHeight) && oamBuffer.size() < 10)
+        {
+            // https://gbdev.io/pandocs/OAM.html#byte-2---tile-index
+            if (PPU::bSprite8x16())
+            {
+                if ((LY + 16) < (YPos - 8))
+                {
+                    tileIndex |= 0x01;
+                }
+                else
+                {
+                    tileIndex &= 0xFE;
+                }
+            }
+
+            oamBuffer.push_back(Sprite{XPos, YPos, tileIndex, attributes, address});
+        }
+    }
+
     if (++nDots == 80)
     {
+        std::sort(oamBuffer.begin(), oamBuffer.end());
         PPU::SwitchMode(MODE_PIXEL_TRANSFER);
     }
 }
 
 void PPU::DoPixelTransfer()
 {
-    TickFetcher();
+    nDots++;
+    pixFetcher->TickFetcher();
 
-    if (!bgFIFO.empty())
+    if (pixFetcher->Ready())
     {
-        if (LX < 0)
-        {
-            bgFIFO.pop();
-            LX++;
-        }
-        else
-        {
-            PPU::DrawPixel(LX, LY, PPU::GetColour(bgFIFO.front().colourNum, BGP));
-            bgFIFO.pop();
+        Pixel pix = pixFetcher->FetchPixel();
+        PPU::DrawPixel(LX, LY, gb_colours[pix.colour]);
 
-            if (++LX == 160)
-            {
-                PPU::SwitchMode(MODE_HBLANK);
-            }
+        if (++LX == 160)
+        {
+            PPU::SwitchMode(MODE_HBLANK);
         }
     }
 }
@@ -258,6 +214,11 @@ void PPU::DoHBlank()
     {
         nDots = 0;
         LY++;
+
+        if (pixFetcher->FetchingWindowPixels())
+        {
+            WLY++;
+        }
 
         if (LY == 144)
         {
@@ -274,6 +235,8 @@ void PPU::DoHBlank()
 
 void PPU::DoVBlank()
 {
+    wyTrigger = false;
+
     if (++nDots == 456)
     {
         nDots = 0;
@@ -282,6 +245,7 @@ void PPU::DoVBlank()
         if (LY == 153)
         {
             LY = 0;
+            WLY = 0;
             PPU::SwitchMode(MODE_OAM_SEARCH);
         }
 
@@ -312,45 +276,13 @@ void PPU::InitRGBTuple(rgb_tuple &tup, const std::string &colour_info)
     }
 }
 
-rgb_tuple PPU::GetColour(int colourNum, uint8_t palette)
-{
-    int hi, lo;
-
-    switch (colourNum)
-    {
-    case 0:
-        hi = 1;
-        lo = 0;
-        break;
-    case 1:
-        hi = 3;
-        lo = 2;
-        break;
-    case 2:
-        hi = 5;
-        lo = 4;
-        break;
-    case 3:
-        hi = 7;
-        lo = 6;
-        break;
-    }
-
-    return gb_colours[PPU::GetValue(palette, hi, lo)];
-}
-
-int PPU::GetValue(uint8_t palette, int hi, int lo)
-{
-    return (GET_BIT(palette, hi) << 1) | GET_BIT(palette, lo);
-}
-
 void PPU::PrintPalette(uint8_t palette)
 {
     std::cout << fmt::format("Info for palette ${0:04X}:", palette) << std::endl;
-    std::cout << fmt::format("Bit 1-0 - ", PPU::GetValue(palette, 1, 0)) << std::endl;
-    std::cout << fmt::format("Bit 3-2 - ", PPU::GetValue(palette, 3, 2)) << std::endl;
-    std::cout << fmt::format("Bit 5-4 - ", PPU::GetValue(palette, 5, 4)) << std::endl;
-    std::cout << fmt::format("Bit 7-6 - ", PPU::GetValue(palette, 7, 6)) << std::endl;
+    std::cout << fmt::format("Bit 1-0 - ", GET_2BITS(palette, palette, 1, 0)) << std::endl;
+    std::cout << fmt::format("Bit 3-2 - ", GET_2BITS(palette, palette, 3, 2)) << std::endl;
+    std::cout << fmt::format("Bit 5-4 - ", GET_2BITS(palette, palette, 5, 4)) << std::endl;
+    std::cout << fmt::format("Bit 7-6 - ", GET_2BITS(palette, palette, 7, 6)) << std::endl;
     std::cout << std::endl;
 }
 
@@ -369,7 +301,7 @@ PPU::PPU(Emulator *emu)
 {
     m_Emulator = emu;
     std::fill(m_Pixels.begin(), m_Pixels.end(), 0);
-    bResetted = false;
+    pixFetcher = std::make_unique<PixelFetcher>(this);
 
     PPU::InitRGBTuple(gb_colours[0], m_Emulator->m_Config->GetValue("Color0"));
     PPU::InitRGBTuple(gb_colours[1], m_Emulator->m_Config->GetValue("Color1"));
@@ -386,6 +318,8 @@ void PPU::Init()
 {
     std::fill(m_Pixels.begin(), m_Pixels.end(), 0);
     bResetted = false;
+    wyTrigger = false;
+    WLY = 0;
 }
 
 void PPU::Reset()
@@ -401,6 +335,10 @@ void PPU::Reset()
     OBP1 = 0xFF;
     WY = 0x00;
     WX = 0x00;
+
+    bResetted = false;
+    wyTrigger = false;
+    WLY = 0;
 }
 
 void PPU::Update(int cycles)
@@ -412,7 +350,7 @@ void PPU::Update(int cycles)
             PPU::SetMode(MODE_HBLANK);
             LY = 0;
             nDots = 0;
-            std::fill(m_Pixels.begin(), m_Pixels.end(), 255); // white background
+            std::fill(m_Pixels.begin(), m_Pixels.end(), 0); // clear screen
             bResetted = true;
         }
         return;
@@ -500,7 +438,7 @@ void PPU::CPUWriteOAM(uint16_t address, uint8_t data)
 
 void PPU::Debug_PrintStatus()
 {
-    std::cout << "*GPU STATUS*" << std::endl;
+    std::cout << "*PPU STATUS*" << std::endl;
     std::cout << fmt::format("LCDC={0:08b}b", LCDC) << std::endl;
     std::cout << fmt::format("LCDEnable={:d} WindowEnable={:d} SpriteEnable={:d} BGAndWindowEnable={:d}",
                              PPU::bLCDEnabled(),

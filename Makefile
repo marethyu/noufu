@@ -13,12 +13,14 @@ OBJ1 := CPUOpcodes.o \
         MemoryController.o \
         Timer.o \
         JoyPad.o \
+        PixelFIFO.o \
+        PixelFetcher.o \
         PPU.o \
         Emulator.o \
         EmulatorConfig.o
 
 ifeq ($(DEBUG), 1)
- LINKFLAGS += -lSDL2
+ LINKFLAGS = -lSDL2
  OBJ1 += DebuggerMain.o
  OBJ_PATH = ./obj/cli/
  TARGET = ./bin/cli/noufu.exe
@@ -58,4 +60,3 @@ clean:
 	if exist bin\cli\noufu.exe del /q bin\cli\noufu.exe
 	if exist bin\gui\gdi\noufu.exe del /q bin\gui\gdi\noufu.exe
 	if exist bin\gui\sdl\noufu.exe del /q bin\gui\sdl\noufu.exe
-	if exist bin\gui\sdl\SDL2.dll del /q bin\gui\sdl\SDL2.dll
