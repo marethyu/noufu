@@ -43,6 +43,19 @@ class PPU : public GBComponent
 private:
     Emulator *m_Emulator;
 
+    /** Registers **/
+    uint8_t &LCDC;
+    uint8_t &STAT;
+    uint8_t &SCY;
+    uint8_t &SCX;
+    uint8_t &LY;
+    uint8_t &LYC;
+    uint8_t &BGP;
+    uint8_t &OBP0;
+    uint8_t &OBP1;
+    uint8_t &WY;
+    uint8_t &WX;
+
     rgb_tuple gb_colours[4];                // colour palette
     bool bResetted;                         // true if LCDC.7 is 0, false otherwise
     int nDots;                              // count number of dots passed in the current scanline (max: 456)
@@ -106,18 +119,6 @@ public:
     void Debug_PrintStatus();
 
     std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> m_Pixels;
-
-    uint8_t &LCDC;
-    uint8_t &STAT;
-    uint8_t &SCY;
-    uint8_t &SCX;
-    uint8_t &LY;
-    uint8_t &LYC;
-    uint8_t &BGP;
-    uint8_t &OBP0;
-    uint8_t &OBP1;
-    uint8_t &WY;
-    uint8_t &WX;
 };
 
 #endif
