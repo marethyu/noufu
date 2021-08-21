@@ -297,10 +297,10 @@ PPU::PPU(Emulator *emu)
     OBP0(emu->m_MemControl->m_IO[0x48]),
     OBP1(emu->m_MemControl->m_IO[0x49]),
     WY(emu->m_MemControl->m_IO[0x4A]),
-    WX(emu->m_MemControl->m_IO[0x4B])
+    WX(emu->m_MemControl->m_IO[0x4B]),
+    m_Pixels(SCREEN_WIDTH * SCREEN_HEIGHT * 4)
 {
     m_Emulator = emu;
-    std::fill(m_Pixels.begin(), m_Pixels.end(), 0);
     pixFetcher = std::make_unique<PixelFetcher>(this);
 
     PPU::InitRGBTuple(gb_colours[0], m_Emulator->m_Config->GetValue("Color0"));

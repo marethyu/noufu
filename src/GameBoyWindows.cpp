@@ -8,7 +8,7 @@
 
 // Save the pixel data to a bmp file
 // Adapted from https://www.technical-recipes.com/2011/creating-bitmap-files-from-raw-pixel-data-in-c/
-static int SavePixelsToBmpFile(const std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> &pixels, int screenScale, const std::string &fname)
+static int SavePixelsToBmpFile(const std::vector<uint8_t> &pixels, int screenScale, const std::string &fname)
 {
     // Some basic bitmap parameters
     unsigned long headers_size = sizeof(BITMAPFILEHEADER) +
@@ -262,7 +262,7 @@ void GameBoyWindows::RenderGraphics(HWND hWnd)
                   0,
                   SCREEN_WIDTH,
                   SCREEN_HEIGHT,
-                  m_Emulator->m_PPU->m_Pixels.data(),
+                  &m_Emulator->m_PPU->m_Pixels[0],
                   &info,
                   DIB_RGB_COLORS,
                   SRCCOPY);
@@ -274,7 +274,7 @@ void GameBoyWindows::RenderGraphics()
 {
     SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 255);
     SDL_RenderClear(m_Renderer);
-    SDL_UpdateTexture(m_Texture, nullptr, m_Emulator->m_PPU->m_Pixels.data(), SCREEN_WIDTH * 4);
+    SDL_UpdateTexture(m_Texture, nullptr, &m_Emulator->m_PPU->m_Pixels[0], SCREEN_WIDTH * 4);
     SDL_RenderCopy(m_Renderer, m_Texture, nullptr, nullptr);
     SDL_RenderPresent(m_Renderer);
 }

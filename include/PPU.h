@@ -1,10 +1,10 @@
 #ifndef _PPU_H_
 #define _PPU_H_
 
-#include <array>
 #include <deque>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "Constants.h"
 #include "GBComponent.h"
@@ -118,7 +118,7 @@ public:
 
     void Debug_PrintStatus();
 
-    std::array<uint8_t, SCREEN_WIDTH * SCREEN_HEIGHT * 4> m_Pixels;
+    std::vector<uint8_t> m_Pixels;
 };
 
 #endif

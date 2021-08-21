@@ -195,7 +195,7 @@ int main(int argc, char *argv[])
 
             SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 255);
             SDL_RenderClear(m_Renderer);
-            SDL_UpdateTexture(m_Texture, nullptr, gb_emu->m_GPU->m_Pixels.data(), SCREEN_WIDTH * 4);
+            SDL_UpdateTexture(m_Texture, nullptr, &gb_emu->m_GPU->m_Pixels[0], SCREEN_WIDTH * 4);
             SDL_RenderCopy(m_Renderer, m_Texture, nullptr, nullptr);
             SDL_RenderPresent(m_Renderer);
 
