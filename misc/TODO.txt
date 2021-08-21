@@ -1,5 +1,5 @@
 change title depending on cartridge label
-pass other blaarg tests
+pass other tests
 sound
 serial communication
 debug window
@@ -7,12 +7,11 @@ save state
 double speed mode
 battery
 mbcs
-ppu fifo
 custom startup logo
 icon
 gb color emulation
 config file more options (debug mode on/off, what shade of color, cgb mode on/off, input settings, lcd display size)
-add folders (States, Boot)
+add folders in  bin (States, Boot, etc.)
 wide screen with viewport at center (give preview in background map)
 rewind https://binji.github.io/posts/binjgb-rewind/
 just in time compiler
@@ -26,6 +25,14 @@ implement more commands for debugging cli
 fix all TODOs
 opengl
 video recording (to gif)
-keyboard shortcuts for menubar items
+accelerators
 friend classes
 async logging
+improve dma and no oam access during dma transfer
+remove the need for alpha value
+emulator takes class cartridge, no loadrom, one emulator instance for each cartridge instance
+cpu microops
+jp title
+about dialog
+https://www.transmissionzero.co.uk/computing/win32-apps-with-mingw/
+ppu logging and other logging
