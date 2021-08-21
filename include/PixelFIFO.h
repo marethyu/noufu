@@ -8,7 +8,7 @@
 struct Pixel
 {
     uint8_t colour;   // "final" colour number
-    bool transparent; // if the colour number (different from `colour`) is zero
+    bool transparent; // true if the colour number (different from 'colour') is zero
     bool bgEnable;    // for window or background pixels only
     bool bgPriority;  // for sprites only
 };
