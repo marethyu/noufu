@@ -36,3 +36,4 @@ jp title
 about dialog
 https://www.transmissionzero.co.uk/computing/win32-apps-with-mingw/
 ppu logging and other logging
+changelog
