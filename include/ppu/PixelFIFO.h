@@ -31,8 +31,15 @@ public:
     Pixel Pop();
     int Size();
 
-    Pixel Get(int index);
-    void Modify(int index, const Pixel &pix); // call PixelFIFO::Exists first before calling this method
+    Pixel operator[](int index) const
+    {
+        return buffer[(tail + index) % MAX_SIZE];
+    }
+
+    Pixel &operator[](int index)
+    {
+        return buffer[(tail + index) % MAX_SIZE];
+    }
 };
 
 #endif

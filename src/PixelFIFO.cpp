@@ -41,13 +41,3 @@ int PixelFIFO::Size()
 {
     return size;
 }
-
-Pixel PixelFIFO::Get(int index)
-{
-    return buffer[(tail + index) % MAX_SIZE];
-}
-
-void PixelFIFO::Modify(int index, const Pixel &pix)
-{
-    buffer[(tail + index) % MAX_SIZE] = pix;
-}

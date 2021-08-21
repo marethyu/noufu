@@ -70,9 +70,9 @@ void PixelFetcher::TickSpritePixFetcher()
             }
             else
             {
-                if(spFIFO.Get(i).transparent)
+                if(spFIFO[i].transparent)
                 {
-                    spFIFO.Modify(i, pix);
+                    spFIFO[i] = pix;
                 }
             }
         }
