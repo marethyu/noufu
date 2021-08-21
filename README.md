@@ -7,8 +7,8 @@ WIP Gameboy emulator written in C++
 Requirements:
 
 - TDM-GCC v9.2.0 (x64)
-- fmt v8.0.0 (preinstalled in `include/`)
-- SDL v2.0.12 (Optional)
+- fmt v8.0.0 (already preinstalled in `include/3rdparty`)
+- SDL v2.0.12 (optional)
 
 Run `setup.bat` first before anything else.
 
