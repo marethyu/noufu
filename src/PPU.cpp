@@ -263,6 +263,17 @@ void PPU::DrawPixel(int x, int y, const rgb_tuple &colour)
     m_Pixels[offset + 3] = 255;
 }
 
+void PPU::ClearScreen()
+{
+    for (int i = 0; i < SCREEN_HEIGHT; ++i)
+    {
+        for (int j = 0; j < SCREEN_WIDTH; ++j)
+        {
+            PPU::DrawPixel(j, i, gb_colours[0]);
+        }
+    }
+}
+
 void PPU::InitRGBTuple(rgb_tuple &tup, const std::string &colour_info)
 {
     std::istringstream ss(colour_info);
@@ -303,6 +314,7 @@ PPU::PPU(Emulator *emu)
 {
     m_Emulator = emu;
     pixFetcher = std::make_unique<PixelFetcher>(this);
+    std::fill(m_Pixels.begin(), m_Pixels.end(), 0);
 
     PPU::InitRGBTuple(gb_colours[0], m_Emulator->m_Config->GetValue("Color0"));
     PPU::InitRGBTuple(gb_colours[1], m_Emulator->m_Config->GetValue("Color1"));
@@ -317,7 +329,8 @@ PPU::~PPU()
 
 void PPU::Init()
 {
-    std::fill(m_Pixels.begin(), m_Pixels.end(), 0);
+    ClearScreen();
+    SCX = 0;
     bResetted = false;
     wyTrigger = false;
     WLY = 0;
@@ -351,7 +364,7 @@ void PPU::Update(int cycles)
             PPU::SetMode(MODE_HBLANK);
             LY = 0;
             nDots = 0;
-            std::fill(m_Pixels.begin(), m_Pixels.end(), 0); // clear screen
+            ClearScreen();
             bResetted = true;
         }
         return;

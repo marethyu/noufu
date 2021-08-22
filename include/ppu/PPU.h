@@ -98,6 +98,7 @@ private:
 
     /** Rendering functions **/
     void DrawPixel(int x, int y, const rgb_tuple &colour);
+    void ClearScreen();
 
     /** Misc **/
     void InitRGBTuple(rgb_tuple &tup, const std::string &colour_info);

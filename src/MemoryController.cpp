@@ -265,7 +265,6 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     {
         m_IO[0x50] = data;
         inBootMode = false;
-        m_Emulator->ResetComponents();
     }
     else if (address >= 0xFF00 && address < 0xFF80)
     {
