@@ -242,7 +242,7 @@ void PixelFetcher::TickFetcher()
         return;
     }
 
-    if (!fetchingWindow && m_PPU->bWindowEnabled() && m_PPU->LX >= (m_PPU->WX - 7) && m_PPU->LY >= m_PPU->WY)
+    if (!fetchingWindow && m_PPU->bWindowEnabled() && m_PPU->wyTrigger && m_PPU->LX >= (m_PPU->WX - 7))
     {
         fetcherX = 0;
         pf_state1 = PF_GET_TILE_NO;
