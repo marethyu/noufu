@@ -30,10 +30,10 @@ friend classes
 async logging
 improve dma and no oam access during dma transfer
 remove the need for alpha value
-emulator takes class cartridge, no loadrom, one emulator instance for each cartridge instance
 cpu microops
 jp title
 about dialog
 https://www.transmissionzero.co.uk/computing/win32-apps-with-mingw/
 ppu logging and other logging
 changelog
+init background with nintendo logo at reset?
