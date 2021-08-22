@@ -37,3 +37,4 @@ https://www.transmissionzero.co.uk/computing/win32-apps-with-mingw/
 ppu logging and other logging
 changelog
 init background with nintendo logo at reset?
+webassembly port (so the emulator can run in browser)
