@@ -330,6 +330,7 @@ PPU::~PPU()
 void PPU::Init()
 {
     ClearScreen();
+    SCX = 0;
     bResetted = false;
     wyTrigger = false;
     WLY = 0;
