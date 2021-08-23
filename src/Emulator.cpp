@@ -23,6 +23,7 @@ void Emulator::InitComponents()
 {
     m_EmulatorLogger->DoLog(LOG_INFO, "Emulator::InitComponents", "--Emulator::InitComponents--");
     m_CPU->Init();
+    m_MemControl->Init();
     m_IntManager->Init();
     m_Timer->Init();
     m_PPU->Init();
@@ -34,6 +35,7 @@ void Emulator::ResetComponents()
 {
     m_EmulatorLogger->DoLog(LOG_INFO, "Emulator::ResetComponents", "--Emulator::ResetComponents--");
     m_CPU->Reset();
+    m_MemControl->Reset();
     m_IntManager->Reset();
     m_Timer->Reset();
     m_PPU->Reset();

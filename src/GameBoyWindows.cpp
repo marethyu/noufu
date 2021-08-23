@@ -178,10 +178,18 @@ void GameBoyWindows::Initialize()
     GameBoyWindows::LogSystemInfo();
 }
 
-void GameBoyWindows::LoadROM(const std::string &rom_file)
+bool GameBoyWindows::LoadROM(const std::string &rom_file, HWND hWnd)
 {
     m_Emulator->InitComponents();
-    m_Emulator->m_MemControl->LoadROM(rom_file);
+
+    bool success = m_Emulator->m_MemControl->LoadROM(rom_file);
+
+    if (success)
+    {
+        SetWindowTextA(hWnd, fmt::format("Noufu [{}]", m_Emulator->m_MemControl->m_Cartridge->GetTitle()).c_str());
+    }
+
+    return success;
 }
 
 void GameBoyWindows::ReloadROM()

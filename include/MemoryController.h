@@ -2,9 +2,12 @@
 #define _MEMORY_CONTROLLER_H_
 
 #include <array>
+#include <memory>
 #include <string>
 
 #include "GBComponent.h"
+
+#include "cartridge/Cartridge.h"
 
 class MemoryController : public GBComponent
 {
@@ -12,8 +15,7 @@ private:
     // Please refer to:
     // - https://gbdev.io/pandocs/Memory_Map.html
     // - http://gameboy.mongenel.com/dmg/asmmemmap.html
-    std::array<uint8_t, 0x8000> m_Cartridge; // Note for future implementation: cartridge size is dependent on MBC and create a seperate class when cartridges get more complicated
-    std::array<uint8_t, 0x2000> m_VRAM; // Note: The PPU can access VRAM directly, but the CPU has to access VRAM through this class.
+    std::array<uint8_t, 0x2000> m_VRAM;
     std::array<uint8_t, 0x4000> m_WRAM;
     std::array<uint8_t, 0xA0> m_OAM;
     std::array<uint8_t, 0x7F> m_HRAM;
@@ -34,7 +36,7 @@ public:
 
     void Init();
     void Reset() {} // nothing
-    void LoadROM(const std::string &rom_file);
+    bool LoadROM(const std::string &rom_file);
     void ReloadROM();
     uint8_t ReadByte(uint16_t address) const;
     uint16_t ReadWord(uint16_t address) const;
@@ -49,6 +51,8 @@ public:
     std::array<uint8_t, 0x80> m_IO;
 
     uint8_t IE;
+
+    std::unique_ptr<Cartridge> m_Cartridge;
 };
 
 #endif

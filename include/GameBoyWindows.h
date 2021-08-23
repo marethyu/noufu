@@ -32,7 +32,7 @@ public:
     ~GameBoyWindows();
 
     void Initialize();
-    void LoadROM(const std::string &rom_file);
+    bool LoadROM(const std::string &rom_file, HWND hWnd);
     void ReloadROM();
     void StopEmulation();
     void CaptureScreen();

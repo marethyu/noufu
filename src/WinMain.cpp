@@ -117,6 +117,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         {
         case ID_LOAD_ROM:
         {
+            KillTimer(hWnd, ID_TIMER);
+
             OPENFILENAME ofn;
             char szFileName[MAX_PATH] = "";
             ZeroMemory(&ofn, sizeof(ofn));
@@ -131,14 +133,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
             if(GetOpenFileName(&ofn))
             {
-                gb.LoadROM(szFileName);
-
-                EnableMenuItem(hMenuBar, ID_RELOAD_ROM, MF_ENABLED);
-                EnableMenuItem(hMenuBar, ID_PAUSE_RESUME_EMU, MF_ENABLED);
-                EnableMenuItem(hMenuBar, ID_STOP_EMULATION, MF_ENABLED);
-                EnableMenuItem(hMenuBar, ID_CAPTURE_SCREEN, MF_ENABLED);
-
-                StartTimer(hWnd);
+                if (gb.LoadROM(szFileName, hWnd))
+                {
+                    EnableMenuItem(hMenuBar, ID_RELOAD_ROM, MF_ENABLED);
+                    EnableMenuItem(hMenuBar, ID_PAUSE_RESUME_EMU, MF_ENABLED);
+                    EnableMenuItem(hMenuBar, ID_STOP_EMULATION, MF_ENABLED);
+                    EnableMenuItem(hMenuBar, ID_CAPTURE_SCREEN, MF_ENABLED);
+                    StartTimer(hWnd);
+                }
+                else
+                {
+                    EnableMenuItem(hMenuBar, ID_RELOAD_ROM, MF_DISABLED | MF_GRAYED);
+                    EnableMenuItem(hMenuBar, ID_PAUSE_RESUME_EMU, MF_DISABLED | MF_GRAYED);
+                    EnableMenuItem(hMenuBar, ID_STOP_EMULATION, MF_DISABLED | MF_GRAYED);
+                    EnableMenuItem(hMenuBar, ID_CAPTURE_SCREEN, MF_DISABLED | MF_GRAYED);
+                    InvalidateRect(hWnd, NULL, FALSE);
+                }
             }
             break;
         }

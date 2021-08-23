@@ -63,28 +63,16 @@ void MemoryController::Init()
     std::generate(m_HRAM.begin(), m_HRAM.end(), std::rand);
 }
 
-void MemoryController::LoadROM(const std::string &rom_file)
+bool MemoryController::LoadROM(const std::string &rom_file)
 {
-    std::ifstream istream(rom_file, std::ios::in | std::ios::binary);
+    bool success = false;
 
-    if (!istream)
+    m_Cartridge = std::make_unique<Cartridge>(rom_file, m_Emulator->m_EmulatorLogger, success);
+
+    if (!success)
     {
-        m_Emulator->m_EmulatorLogger->DoLog(LOG_ERROR, "MMU::LoadROM", "Failed to open {}", rom_file);
-        throw std::system_error(errno, std::system_category(), "failed to open " + rom_file);
+        return false;
     }
-
-    istream.seekg(0, std::ios::end);
-    size_t length = istream.tellg();
-    istream.seekg(0, std::ios::beg);
-
-    if (length > m_Cartridge.size())
-    {
-        length = m_Cartridge.size();
-    }
-
-    istream.read(reinterpret_cast<char *>(m_Cartridge.data()), length);
-
-    istream.close();
 
     if (!bUseBootROM)
     {
@@ -95,7 +83,9 @@ void MemoryController::LoadROM(const std::string &rom_file)
         inBootMode = true;
     }
 
-    m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "MMU::LoadROM", "Loaded {} (BOOT_MODE={:d})", rom_file, inBootMode);
+    m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "MMU::LoadROM", "Current ROM loaded");
+
+    return true;
 }
 
 void MemoryController::ReloadROM()
@@ -109,7 +99,7 @@ void MemoryController::ReloadROM()
         inBootMode = true;
     }
 
-    m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "MMU::ReloadROM", "Current ROM reloaded (BOOT_MODE={:d})", inBootMode);
+    m_Emulator->m_EmulatorLogger->DoLog(LOG_INFO, "MMU::ReloadROM", "Current ROM reloaded");
 }
 
 uint8_t MemoryController::ReadByte(uint16_t address) const
@@ -120,7 +110,7 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
     }
     else if (address < 0x8000)
     {
-        return m_Cartridge[address];
+        return m_Cartridge->m_ROM->ReadByte(address);
     }
     if (address >= 0x8000 && address < 0xA000)
     {
@@ -128,11 +118,7 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
     }
     else if (address >= 0xA000 && address < 0xC000)
     {
-        if (bLoggingEnabled)
-        {
-            m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::ReadByte", "Attempted to read from $A000-$BFFF; Probably need to implement MBC; address={0:04X}", address);
-        }
-        return 0x00;
+        return m_Cartridge->m_ROM->RamReadByte(address);
     }
     else if (address >= 0xC000 && address < 0xE000)
     {
@@ -148,10 +134,6 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
     }
     else if (address >= 0xFEA0 && address < 0xFF00)
     {
-        if (bLoggingEnabled)
-        {
-            m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::ReadByte", "Attempted to read from $FEA0-$FEFF; address={0:04X}", address);
-        }
         return 0x00;
     }
     else if (address == 0xFF00)
@@ -199,10 +181,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else if (address < 0x8000)
     {
-        if (bLoggingEnabled)
-        {
-            m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::WriteByte", "Attempted to write to $0000-$7FFF; address={0:04X}", address);
-        }
+        m_Cartridge->m_ROM->WriteByte(address, data);
     }
     else if (address >= 0x8000 && address < 0xA000)
     {
@@ -210,10 +189,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else if (address >= 0xA000 && address < 0xC000)
     {
-        if (bLoggingEnabled)
-        {
-            m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::WriteByte", "Attempted to write to $A000-$BFFF; Probably need to implement MBC; address={0:04X}", address);
-        }
+        m_Cartridge->m_ROM->RamWriteByte(address, data);
     }
     else if (address >= 0xC000 && address < 0xE000)
     {
@@ -229,10 +205,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     }
     else if (address >= 0xFEA0 && address < 0xFF00)
     {
-        if (bLoggingEnabled)
-        {
-            m_Emulator->m_EmulatorLogger->DoLog(LOG_WARNING, "MMU::WriteByte", "Attempted to write to $FEA0-$FEFF; address={0:04X}", address);
-        }
+        
     }
     else if (address == 0xFF04)
     {

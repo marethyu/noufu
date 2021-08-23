@@ -7,7 +7,9 @@ CXXFLAGS = -std=c++2a -Wall -fmax-errors=5
 SRC_PATH = ./src/
 INC_PATH = ./include/
 
-OBJ1 := CPUOpcodes.o \
+OBJ1 := Cartridge.o \
+        CartridgePlainROM.o \
+        CPUOpcodes.o \
         CPU.o \
         InterruptManager.o \
         MemoryController.o \
