@@ -295,7 +295,7 @@ void GameBoyWindows::HandleKeyDown(WPARAM wParam)
     case 0x41: // a key
         m_Emulator->m_JoyPad->PressButton(JOYPAD_A);
         break;
-    case 0x42: // b key
+    case 0x53: // s key
         m_Emulator->m_JoyPad->PressButton(JOYPAD_B);
         break;
     case VK_RETURN:
@@ -326,7 +326,7 @@ void GameBoyWindows::HandleKeyUp(WPARAM wParam)
     case 0x41: // a key
         m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_A);
         break;
-    case 0x42: // b key
+    case 0x53: // s key
         m_Emulator->m_JoyPad->ReleaseButton(JOYPAD_B);
         break;
     case VK_RETURN:
