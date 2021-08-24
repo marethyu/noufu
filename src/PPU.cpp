@@ -280,46 +280,48 @@ void PPU::DrawPixel(int x, int y, const rgb_tuple &colour)
 
 void PPU::DrawWideBackground()
 {
-    int xStart = ((256 + ((SCX - 24) % 256)) % 256) / 8; // starting x index in the 32x32 background map
-    int yStart = ((256 + ((SCY - 24) % 256)) % 256) / 8; // starting y index in the 32x32 background map
-
     uint16_t address = PPU::bBackgroundTileMap() ? 0x9C00 : 0x9800;
     bool useSigned = !PPU::bBackgroundAndWindowTileData();
     uint16_t tileData = useSigned ? 0x9000 : 0x8000;
 
-    for (int y = 0, yPos = 0; y < 24; ++y, yPos += 8)
+    for (int yPos = 0; yPos < 192; yPos += 8)
     {
-        for (int x = 0, xPos = 0; x < 26; ++x, xPos += 8)
+        for (int xPos = 0; xPos < 208; xPos += 8)
         {
             if ((xPos >= 24 && xPos < 184) && (yPos >= 24 && yPos < 168))
             {
                 continue;
             }
 
-            uint16_t xOffset = (xStart + x) % 32;
-            uint16_t yOffset = (yStart + y) % 32;
-
-            uint8_t tileIndex = m_Emulator->m_MemControl->ReadByte(address + xOffset + yOffset * 32);
-
             for (int i = 0; i < 8; ++i)
             {
-                uint16_t tileAddr = tileData + (useSigned ? int8_t(tileIndex) : tileIndex) * 16 + i * 2;
-
-                uint8_t tileLo = m_Emulator->m_MemControl->ReadByte(tileAddr);
-                uint8_t tileHi = m_Emulator->m_MemControl->ReadByte(tileAddr + 1);
-
-                for (int bit = 7; bit >= 0; --bit)
+                for (int j = 0; j < 8; ++j)
                 {
-                    rgb_tuple rgb = gb_colours[PPU::GetColour(GET_2BITS(tileHi, tileLo, bit, bit), BGP)];
+                    uint16_t newX = xPos + j;
+                    uint16_t newY = yPos + i;
 
-                    int effX = xPos + (7 - bit);
-                    int effY = yPos + i;
-                    int offset = effY * (SCREEN_WIDTH + 48) * 4 + effX * 4;
+                    uint16_t bgX = (SCX - 24) + newX;
+                    uint16_t bgY = (SCY - 24) + newY;
 
-                    if ((effX == 23 && effY >= 23 && effY <= 168) ||
-                        (effX == 184 && effY >= 23 && effY <= 168) ||
-                        (effY == 23 && effX >= 23 && effX <= 184) ||
-                        (effY == 168 && effX >= 23 && effX <= 184)) // for creating a black rectangular border
+                    uint16_t xOffset = ((256 + (bgX % 256)) % 256) / 8;
+                    uint16_t yOffset = ((256 + (bgY % 256)) % 256) / 8;
+
+                    uint8_t tileIndex = m_Emulator->m_MemControl->ReadByte(address + xOffset + yOffset * 32);
+                    uint16_t tileAddr = tileData + (useSigned ? int8_t(tileIndex) : tileIndex) * 16 + (bgY % 8) * 2;
+
+                    uint8_t tileLo = m_Emulator->m_MemControl->ReadByte(tileAddr);
+                    uint8_t tileHi = m_Emulator->m_MemControl->ReadByte(tileAddr + 1);
+
+                    int effBit = 7 - (bgX % 8);
+
+                    rgb_tuple rgb = gb_colours[PPU::GetColour(GET_2BITS(tileHi, tileLo, effBit, effBit), BGP)];
+
+                    int offset = newY * (SCREEN_WIDTH + 48) * 4 + newX * 4;
+
+                    if ((newX == 23 && newY >= 23 && newY <= 168) ||
+                        (newX == 184 && newY >= 23 && newY <= 168) ||
+                        (newY == 23 && newX >= 23 && newX <= 184) ||
+                        (newY == 168 && newX >= 23 && newX <= 184)) // for creating a black rectangular border
                     {
                         m_Pixels[offset    ] = 0;
                         m_Pixels[offset + 1] = 0;
