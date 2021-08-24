@@ -36,28 +36,14 @@ uint8_t CartridgeMBC1ROM::CalcHighBankNumber()
 {
     uint8_t high_bankn = rom_bank;
 
-    if (rom_size == 5)
+    if (rom_size == 5 && GET_BIT(ram_bank, 0))
     {
-        if (GET_BIT(ram_bank, 0))
-        {
-            SET_BIT(high_bankn, 5);
-        }
-        else
-        {
-            RES_BIT(high_bankn, 5);
-        }
+        SET_BIT(high_bankn, 5);
     }
 
-    if (rom_size == 6)
+    if (rom_size == 6 && GET_BIT(ram_bank, 1))
     {
-        if (GET_BIT(ram_bank, 1))
-        {
-            SET_BIT(high_bankn, 6);
-        }
-        else
-        {
-            RES_BIT(high_bankn, 6);
-        }
+        SET_BIT(high_bankn, 6);
     }
 
     return high_bankn;
