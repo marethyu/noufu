@@ -8,8 +8,6 @@
 
 class CartridgePlainROM : public CartridgeROMBase
 {
-private:
-    std::array<uint8_t, 0x8000> m_Memory;
 public:
     CartridgePlainROM(const std::string &rom_file);
     ~CartridgePlainROM();

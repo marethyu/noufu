@@ -21,7 +21,6 @@ private:
     bool ram_enable;
     bool mode_flag;
 
-    std::vector<uint8_t> m_ROM;
     std::vector<uint8_t> m_RAM;
 
     uint8_t CalcZeroBankNumber();

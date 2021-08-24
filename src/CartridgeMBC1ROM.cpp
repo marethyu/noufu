@@ -49,12 +49,9 @@ uint8_t CartridgeMBC1ROM::CalcHighBankNumber()
     return high_bankn;
 }
 
-CartridgeMBC1ROM::CartridgeMBC1ROM(const std::string &rom_file, uint8_t rom_size, uint8_t ram_size, uint8_t type) : rom_size(rom_size), ram_size(ram_size)
+CartridgeMBC1ROM::CartridgeMBC1ROM(const std::string &rom_file, uint8_t rom_size, uint8_t ram_size, uint8_t type)
+  : CartridgeROMBase(rom_file), rom_size(rom_size), ram_size(ram_size)
 {
-    std::ifstream istream(rom_file, std::ios::in | std::ios::binary);
-    m_ROM = std::vector<uint8_t>(std::istreambuf_iterator<char>(istream), std::istreambuf_iterator<char>());
-    istream.close();
-
     rom_bank = 1;
     ram_bank = 0;
     ram_enable = false;
