@@ -1,6 +1,10 @@
 #ifndef _CARTRIDGE_ROM_BASE_H_
 #define _CARTRIDGE_ROM_BASE_H_
 
+#define MBC_PLAIN 0
+#define MBC_RAM 1
+#define MBC_RAM_BATTERY 2
+
 class CartridgeROMBase
 {
 public:

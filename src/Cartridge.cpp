@@ -6,6 +6,7 @@
 
 #include "cartridge/Cartridge.h"
 #include "cartridge/CartridgePlainROM.h"
+#include "cartridge/CartridgeMBC1ROM.h"
 
 static const std::unordered_map<uint8_t, std::string> cart_types = {
     {0x0, "ROM ONLY"},
@@ -145,6 +146,24 @@ Cartridge::Cartridge(const std::string &rom_file, std::shared_ptr<Logger> logger
     case 0x0:
     {
         m_ROM = std::make_unique<CartridgePlainROM>(rom_file);
+        success = true;
+        break;
+    }
+    case 0x1:
+    {
+        m_ROM = std::make_unique<CartridgeMBC1ROM>(rom_file, rom_size, ram_size, MBC_PLAIN);
+        success = true;
+        break;
+    }
+    case 0x2:
+    {
+        m_ROM = std::make_unique<CartridgeMBC1ROM>(rom_file, rom_size, ram_size, MBC_RAM);
+        success = true;
+        break;
+    }
+    case 0x3:
+    {
+        m_ROM = std::make_unique<CartridgeMBC1ROM>(rom_file, rom_size, ram_size, MBC_RAM_BATTERY);
         success = true;
         break;
     }

@@ -9,6 +9,7 @@ INC_PATH = ./include/
 
 OBJ1 := Cartridge.o \
         CartridgePlainROM.o \
+        CartridgeMBC1ROM.o \
         CPUOpcodes.o \
         CPU.o \
         InterruptManager.o \
