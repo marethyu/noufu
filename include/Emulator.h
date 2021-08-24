@@ -15,12 +15,12 @@
 #include "cpu/CPU.h"
 #include "ppu/PPU.h"
 
-typedef int (*CaptureFunc)(const std::vector<uint8_t>&, int, const std::string&);
+typedef int (*CaptureFunc)(const std::vector<uint8_t>&, int, const std::string&, bool);
 
 class Emulator
 {
 public:
-    Emulator(std::shared_ptr<Logger> logger, std::shared_ptr<EmulatorConfig> config);
+    Emulator(std::shared_ptr<Logger> logger, std::shared_ptr<EmulatorConfig> config, bool bgPreview);
     ~Emulator();
 
     void InitComponents();
@@ -45,6 +45,11 @@ public:
     std::unique_ptr<Timer> m_Timer;
     std::unique_ptr<PPU> m_PPU;
     std::unique_ptr<JoyPad> m_JoyPad;
+
+    bool bgPreview;
+
+    int dispWidth;
+    int dispHeight;
 private:
     int m_TotalCycles; // T-cycles
     int m_PrevTotalCycles;

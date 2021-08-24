@@ -268,11 +268,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
     int screenScale = std::stoi(config->GetValue("ScreenScaleFactor"));
+    bool bgPreview = std::stoi(config->GetValue("PreviewBackground"));
 
     rcClient.left = 0;
     rcClient.top = 0;
-    rcClient.right = SCREEN_WIDTH * screenScale;
-    rcClient.bottom = SCREEN_HEIGHT * screenScale;
+    rcClient.right = (SCREEN_WIDTH + (bgPreview ? BORDER_SIZE : 0)) * screenScale;
+    rcClient.bottom = (SCREEN_HEIGHT + (bgPreview ? BORDER_SIZE : 0)) * screenScale;
 
     AdjustWindowRectEx(&rcClient, style, TRUE, 0);
 

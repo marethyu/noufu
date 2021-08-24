@@ -126,6 +126,11 @@ void PPU::SwitchMode(int mode)
         PPU::SetMode(MODE_VBLANK);
         stat_irq = bVBlankStatInterrupt();
         m_Emulator->m_IntManager->RequestInterrupt(INT_VBLANK);
+
+        if (m_Emulator->bgPreview)
+        {
+            PPU::DrawWideBackground();
+        }
         break;
     }
     }
@@ -256,11 +261,82 @@ void PPU::DoVBlank()
 
 void PPU::DrawPixel(int x, int y, const rgb_tuple &colour)
 {
-    int offset = y * SCREEN_WIDTH * 4 + x * 4;
+    int offset;
+
+    if (m_Emulator->bgPreview)
+    {
+        offset = (y + 24) * (SCREEN_WIDTH + BORDER_SIZE) * 4 + (x + 24) * 4;
+    }
+    else
+    {
+        offset = y * SCREEN_WIDTH * 4 + x * 4;
+    }
+
     m_Pixels[offset    ] = colour.b;
     m_Pixels[offset + 1] = colour.g;
     m_Pixels[offset + 2] = colour.r;
     m_Pixels[offset + 3] = 255;
+}
+
+void PPU::DrawWideBackground()
+{
+    int xStart = ((256 + ((SCX - 24) % 256)) % 256) / 8; // starting x index in the 32x32 background map
+    int yStart = ((256 + ((SCY - 24) % 256)) % 256) / 8; // starting y index in the 32x32 background map
+
+    uint16_t address = PPU::bBackgroundTileMap() ? 0x9C00 : 0x9800;
+    bool useSigned = !PPU::bBackgroundAndWindowTileData();
+    uint16_t tileData = useSigned ? 0x9000 : 0x8000;
+
+    for (int y = 0, yPos = 0; y < 24; ++y, yPos += 8)
+    {
+        for (int x = 0, xPos = 0; x < 26; ++x, xPos += 8)
+        {
+            if ((xPos >= 24 && xPos < 184) && (yPos >= 24 && yPos < 168))
+            {
+                continue;
+            }
+
+            uint16_t xOffset = (xStart + x) % 32;
+            uint16_t yOffset = (yStart + y) % 32;
+
+            uint8_t tileIndex = m_Emulator->m_MemControl->ReadByte(address + xOffset + yOffset * 32);
+
+            for (int i = 0; i < 8; ++i)
+            {
+                uint16_t tileAddr = tileData + (useSigned ? int8_t(tileIndex) : tileIndex) * 16 + i * 2;
+
+                uint8_t tileLo = m_Emulator->m_MemControl->ReadByte(tileAddr);
+                uint8_t tileHi = m_Emulator->m_MemControl->ReadByte(tileAddr + 1);
+
+                for (int bit = 7; bit >= 0; --bit)
+                {
+                    rgb_tuple rgb = gb_colours[PPU::GetColour(GET_2BITS(tileHi, tileLo, bit, bit), BGP)];
+
+                    int effX = xPos + (7 - bit);
+                    int effY = yPos + i;
+                    int offset = effY * (SCREEN_WIDTH + 48) * 4 + effX * 4;
+
+                    if ((effX == 23 && effY >= 23 && effY <= 168) ||
+                        (effX == 184 && effY >= 23 && effY <= 168) ||
+                        (effY == 23 && effX >= 23 && effX <= 184) ||
+                        (effY == 168 && effX >= 23 && effX <= 184)) // for creating a black rectangular border
+                    {
+                        m_Pixels[offset    ] = 0;
+                        m_Pixels[offset + 1] = 0;
+                        m_Pixels[offset + 2] = 0;
+                        m_Pixels[offset + 3] = 255;
+                    }
+                    else
+                    {
+                        m_Pixels[offset    ] = rgb.b * 3 / 4;
+                        m_Pixels[offset + 1] = rgb.g * 3 / 4;
+                        m_Pixels[offset + 2] = rgb.r * 3 / 4;
+                        m_Pixels[offset + 3] = 255;
+                    }
+                }
+            }
+        }
+    }
 }
 
 void PPU::ClearScreen()
@@ -272,6 +348,33 @@ void PPU::ClearScreen()
             PPU::DrawPixel(j, i, gb_colours[0]);
         }
     }
+}
+
+uint8_t PPU::GetColour(uint8_t colourNum, uint8_t palette)
+{
+    int hi, lo;
+
+    switch (colourNum)
+    {
+    case 0:
+        hi = 1;
+        lo = 0;
+        break;
+    case 1:
+        hi = 3;
+        lo = 2;
+        break;
+    case 2:
+        hi = 5;
+        lo = 4;
+        break;
+    case 3:
+        hi = 7;
+        lo = 6;
+        break;
+    }
+
+    return GET_2BITS(palette, palette, hi, lo);
 }
 
 void PPU::InitRGBTuple(rgb_tuple &tup, const std::string &colour_info)
@@ -309,11 +412,12 @@ PPU::PPU(Emulator *emu)
     OBP0(emu->m_MemControl->m_IO[0x48]),
     OBP1(emu->m_MemControl->m_IO[0x49]),
     WY(emu->m_MemControl->m_IO[0x4A]),
-    WX(emu->m_MemControl->m_IO[0x4B]),
-    m_Pixels(SCREEN_WIDTH * SCREEN_HEIGHT * 4)
+    WX(emu->m_MemControl->m_IO[0x4B])
 {
     m_Emulator = emu;
     pixFetcher = std::make_unique<PixelFetcher>(this);
+    m_Pixels.resize(m_Emulator->dispWidth * m_Emulator->dispHeight * 4);
+
     std::fill(m_Pixels.begin(), m_Pixels.end(), 0);
 
     PPU::InitRGBTuple(gb_colours[0], m_Emulator->m_Config->GetValue("Color0"));

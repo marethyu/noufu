@@ -31,8 +31,6 @@ private:
     void TickSpritePixFetcher();
     void TickBackgroundPixFetcher();
 
-    uint8_t GetColour(uint8_t colourNum, uint8_t palette);
-
     Pixel MixPixels(const Pixel &bg, const Pixel &sp);
 public:
     PixelFetcher(PPU *ppu);

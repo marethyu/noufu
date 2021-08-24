@@ -98,9 +98,11 @@ private:
 
     /** Rendering functions **/
     void DrawPixel(int x, int y, const rgb_tuple &colour);
+    void DrawWideBackground();
     void ClearScreen();
 
     /** Misc **/
+    uint8_t GetColour(uint8_t colourNum, uint8_t palette);
     void InitRGBTuple(rgb_tuple &tup, const std::string &colour_info);
     void PrintPalette(uint8_t palette);
 public:

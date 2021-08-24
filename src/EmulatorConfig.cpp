@@ -64,4 +64,5 @@ void EmulatorConfig::DoDefaultSettings()
     m_Settings["Color1"] = "88.C0.70";
     m_Settings["Color2"] = "34.68.56";
     m_Settings["Color3"] = "08.18.20";
+    m_Settings["PreviewBackground"] = "0";
 }

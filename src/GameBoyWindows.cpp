@@ -6,10 +6,14 @@
 #define FMT_HEADER_ONLY
 #include "3rdparty/fmt/format.h"
 
+// TODO modify to include bgPreview
 // Save the pixel data to a bmp file
 // Adapted from https://www.technical-recipes.com/2011/creating-bitmap-files-from-raw-pixel-data-in-c/
-static int SavePixelsToBmpFile(const std::vector<uint8_t> &pixels, int screenScale, const std::string &fname)
+static int SavePixelsToBmpFile(const std::vector<uint8_t> &pixels, int screenScale, const std::string &fname, bool bgPreview)
 {
+    const int width = SCREEN_WIDTH + (bgPreview ? BORDER_SIZE : 0);
+    const int height = SCREEN_HEIGHT + (bgPreview ? BORDER_SIZE : 0);
+
     // Some basic bitmap parameters
     unsigned long headers_size = sizeof(BITMAPFILEHEADER) +
                                  sizeof(BITMAPINFOHEADER);
@@ -31,11 +35,11 @@ static int SavePixelsToBmpFile(const std::vector<uint8_t> &pixels, int screenSca
     // Store as un Compressed
     bmpInfoHeader.biCompression = BI_RGB;
 
-    // Set the height in pixels
-    bmpInfoHeader.biHeight = SCREEN_HEIGHT * screenScale;
-
     // Width of the Image in pixels
-    bmpInfoHeader.biWidth = SCREEN_WIDTH * screenScale;
+    bmpInfoHeader.biWidth = width * screenScale;
+
+    // Set the height in pixels
+    bmpInfoHeader.biHeight = height * screenScale;
 
     // Default number of planes
     bmpInfoHeader.biPlanes = 1;
@@ -93,17 +97,17 @@ static int SavePixelsToBmpFile(const std::vector<uint8_t> &pixels, int screenSca
               NULL);
 
     // Write the RGB Data
-    std::vector<uint8_t> cpy(SCREEN_WIDTH * SCREEN_HEIGHT * screenScale * screenScale * 4);
+    std::vector<uint8_t> cpy(width * height * screenScale * screenScale * 4);
 
     // Perform Y-axis mirroring and magnification before that...
-    for (int i = 0; i < SCREEN_HEIGHT; ++i)
+    for (int i = 0; i < height; ++i)
     {
-        for (int j = 0; j < SCREEN_WIDTH; ++j)
+        for (int j = 0; j < width; ++j)
         {
-            int offset = i * SCREEN_WIDTH * 4 + j * 4; // index in pixels array
+            int offset = i * width * 4 + j * 4; // index in pixels array
 
             // indexes in cpy array, assuming it is a 2D array
-            int cpy_i = (SCREEN_HEIGHT - i - 1) * screenScale;
+            int cpy_i = (height - i - 1) * screenScale;
             int cpy_j = j * screenScale;
 
             // i_ and j_ are added to cpy_i and cpy_j
@@ -111,7 +115,7 @@ static int SavePixelsToBmpFile(const std::vector<uint8_t> &pixels, int screenSca
             {
                 for (int j_ = 0; j_ < screenScale; ++j_)
                 {
-                    int offset_ = (cpy_i + i_) * (SCREEN_WIDTH * screenScale) * 4 + (cpy_j + j_) * 4;
+                    int offset_ = (cpy_i + i_) * (width * screenScale) * 4 + (cpy_j + j_) * 4;
 
                     cpy[offset_    ] = pixels[offset];
                     cpy[offset_ + 1] = pixels[offset + 1];
@@ -148,17 +152,20 @@ GameBoyWindows::GameBoyWindows(std::shared_ptr<Logger> logger, std::shared_ptr<E
 {
     m_Logger = logger;
 
-    m_Emulator = std::make_unique<Emulator>(logger, config);
+    m_Emulator = std::make_unique<Emulator>(logger, config, std::stoi(config->GetValue("PreviewBackground")));
     m_Emulator->SetCapture(SavePixelsToBmpFile);
 
 #ifndef USE_SDL
+    int biWidth = m_Emulator->dispWidth;
+    int biHeight = m_Emulator->dispHeight;
+
     info.bmiHeader.biSize = sizeof(info.bmiHeader);
-    info.bmiHeader.biWidth = SCREEN_WIDTH;
-    info.bmiHeader.biHeight = SCREEN_HEIGHT;
+    info.bmiHeader.biWidth = biWidth;
+    info.bmiHeader.biHeight = biHeight;
     info.bmiHeader.biPlanes = 1;
     info.bmiHeader.biBitCount = 32;
     info.bmiHeader.biCompression = BI_RGB;
-    info.bmiHeader.biSizeImage = ((((SCREEN_WIDTH * 32) + 31) & ~31) >> 3) * SCREEN_HEIGHT;
+    info.bmiHeader.biSizeImage = ((((biWidth * 32) + 31) & ~31) >> 3) * biHeight;
     info.bmiHeader.biXPelsPerMeter = 0;
     info.bmiHeader.biYPelsPerMeter = 0;
     info.bmiHeader.biClrUsed = 0;
@@ -233,7 +240,11 @@ bool GameBoyWindows::Create(HWND hWnd)
         return false;
     }
 
-    m_Texture = SDL_CreateTexture(m_Renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, SCREEN_WIDTH, SCREEN_HEIGHT);
+    m_Texture = SDL_CreateTexture(m_Renderer,
+                                  SDL_PIXELFORMAT_ARGB8888,
+                                  SDL_TEXTUREACCESS_STREAMING,
+                                  m_Emulator->dispWidth,
+                                  m_Emulator->dispHeight);
     if (m_Texture == nullptr)
     {
         m_Logger->DoLog(LOG_ERROR, "GameBoyWindows::Create", "[SDL Error] Couldn't create texture: {}", SDL_GetError());
@@ -268,8 +279,8 @@ void GameBoyWindows::RenderGraphics(HWND hWnd)
                   -height,
                   0,
                   0,
-                  SCREEN_WIDTH,
-                  SCREEN_HEIGHT,
+                  m_Emulator->dispWidth,
+                  m_Emulator->dispHeight,
                   &m_Emulator->m_PPU->m_Pixels[0],
                   &info,
                   DIB_RGB_COLORS,
@@ -282,7 +293,7 @@ void GameBoyWindows::RenderGraphics()
 {
     SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 255);
     SDL_RenderClear(m_Renderer);
-    SDL_UpdateTexture(m_Texture, nullptr, &m_Emulator->m_PPU->m_Pixels[0], SCREEN_WIDTH * 4);
+    SDL_UpdateTexture(m_Texture, nullptr, &m_Emulator->m_PPU->m_Pixels[0], m_Emulator->dispWidth * 4);
     SDL_RenderCopy(m_Renderer, m_Texture, nullptr, nullptr);
     SDL_RenderPresent(m_Renderer);
 }

@@ -62,7 +62,7 @@ void PixelFetcher::TickSpritePixFetcher()
 
             int effectiveBit = GET_BIT(cur_sprite.attr, 5) ? 7 - bit : bit;
             uint8_t colourNum = GET_2BITS(sTileHi, sTileLo, effectiveBit, effectiveBit);
-            Pixel pix{PixelFetcher::GetColour(colourNum, GET_BIT(cur_sprite.attr, 4) ? m_PPU->OBP1 : m_PPU->OBP0), colourNum == 0, false, GET_BIT(cur_sprite.attr, 7)};
+            Pixel pix{m_PPU->GetColour(colourNum, GET_BIT(cur_sprite.attr, 4) ? m_PPU->OBP1 : m_PPU->OBP0), colourNum == 0, false, GET_BIT(cur_sprite.attr, 7)};
 
             if(i >= spFIFO.Size())
             {
@@ -119,7 +119,7 @@ void PixelFetcher::TickBackgroundPixFetcher()
     {
         bool useSigned = !m_PPU->bBackgroundAndWindowTileData();
         uint16_t tileData = useSigned ? 0x9000 : 0x8000; // the "$8800 method" uses $9000 as its base pointer and uses a signed addressing
-        uint16_t offset1 = (useSigned ? int8_t(tileNo): tileNo) * 16;
+        uint16_t offset1 = (useSigned ? int8_t(tileNo) : tileNo) * 16;
         uint16_t offset2 = fetchingWindow ? (m_PPU->WLY % 8) * 2 : ((m_PPU->LY + m_PPU->SCY) % 8) * 2;
 
         addr = tileData + offset1 + offset2;
@@ -141,7 +141,7 @@ void PixelFetcher::TickBackgroundPixFetcher()
             for (int bit = 7; bit >= 0; --bit)
             {
                 uint8_t colourNum = GET_2BITS(tileHi, tileLo, bit, bit);
-                bgFIFO.Push(Pixel{PixelFetcher::GetColour(colourNum, m_PPU->BGP), colourNum == 0, m_PPU->bBGAndWindowEnabled(), false});
+                bgFIFO.Push(Pixel{m_PPU->GetColour(colourNum, m_PPU->BGP), colourNum == 0, m_PPU->bBGAndWindowEnabled(), false});
             }
 
             fetcherX++;
@@ -154,33 +154,6 @@ void PixelFetcher::TickBackgroundPixFetcher()
         break;
     }
     }
-}
-
-uint8_t PixelFetcher::GetColour(uint8_t colourNum, uint8_t palette)
-{
-    int hi, lo;
-
-    switch (colourNum)
-    {
-    case 0:
-        hi = 1;
-        lo = 0;
-        break;
-    case 1:
-        hi = 3;
-        lo = 2;
-        break;
-    case 2:
-        hi = 5;
-        lo = 4;
-        break;
-    case 3:
-        hi = 7;
-        lo = 6;
-        break;
-    }
-
-    return GET_2BITS(palette, palette, hi, lo);
 }
 
 Pixel PixelFetcher::MixPixels(const Pixel &bg, const Pixel &sp)

@@ -1,10 +1,13 @@
 #include "Constants.h"
 #include "Emulator.h"
 
-Emulator::Emulator(std::shared_ptr<Logger> logger, std::shared_ptr<EmulatorConfig> config)
+Emulator::Emulator(std::shared_ptr<Logger> logger, std::shared_ptr<EmulatorConfig> config, bool bgPreview) : bgPreview(bgPreview)
 {
     m_EmulatorLogger = logger;
     m_Config = config;
+
+    dispWidth = SCREEN_WIDTH + (bgPreview ? 48 : 0);
+    dispHeight = SCREEN_HEIGHT + (bgPreview ? 48 : 0);
 
     m_CPU = std::make_unique<CPU>(this);
     m_MemControl = std::make_unique<MemoryController>(this);
@@ -69,7 +72,7 @@ void Emulator::SetCapture(CaptureFunc capture)
 
 int Emulator::CaptureScreen(const std::string &fname)
 {
-    int ret = Capture(m_PPU->m_Pixels, std::stoi(m_Config->GetValue("ScreenScaleFactor")), fname);
+    int ret = Capture(m_PPU->m_Pixels, std::stoi(m_Config->GetValue("ScreenScaleFactor")), fname, bgPreview);
 
     if (ret)
     {
