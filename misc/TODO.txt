@@ -10,8 +10,6 @@ custom startup logo
 icon
 gb color emulation
 config file more options (debug mode on/off, what shade of color, cgb mode on/off, input settings, lcd display size)
-add folders in  bin (States, Boot, etc.)
-wide screen with viewport at center (give preview in background map)
 rewind https://binji.github.io/posts/binjgb-rewind/
 just in time compiler
 ROM file reader
