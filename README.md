@@ -4,7 +4,7 @@ WIP Gameboy emulator written in C++
 
 ## Preview
 
-![](media/mario-bg-preview.mp4)
+[](https://user-images.githubusercontent.com/42195546/130702128-da022966-3b18-4513-ad36-ae5d6f4458f2.mp4)
 
 ## Build Instructions
 
