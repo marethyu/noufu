@@ -343,11 +343,17 @@ void PPU::DrawWideBackground()
 
 void PPU::ClearScreen()
 {
-    for (int i = 0; i < SCREEN_HEIGHT; ++i)
+    for (int i = 0; i < m_Emulator->dispHeight; ++i)
     {
-        for (int j = 0; j < SCREEN_WIDTH; ++j)
+        for (int j = 0; j < m_Emulator->dispWidth; ++j)
         {
-            PPU::DrawPixel(j, i, gb_colours[0]);
+            rgb_tuple rgb = gb_colours[0];
+            int offset = i * m_Emulator->dispWidth * 4 + j * 4;
+
+            m_Pixels[offset    ] = rgb.b;
+            m_Pixels[offset + 1] = rgb.g;
+            m_Pixels[offset + 2] = rgb.r;
+            m_Pixels[offset + 3] = 255;
         }
     }
 }
