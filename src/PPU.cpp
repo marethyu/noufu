@@ -248,7 +248,7 @@ void PPU::DoVBlank()
         nDots = 0;
         LY++;
 
-        if (LY == 153)
+        if (LY > 153)
         {
             LY = 0;
             WLY = 0;
