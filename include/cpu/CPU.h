@@ -25,7 +25,7 @@ private:
     // A        - 7
     // SP Low   - 8
     // SP High  - 9
-    uint8_t reg8[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+    uint8_t reg8[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     uint8_t &A = reg8[7];
     uint8_t &F = reg8[6];
     uint8_t *reg8_group[8] = {reg8 + 1, reg8, reg8 + 3, reg8 + 2, reg8 + 5, reg8 + 4, &F, &A}; // order: B, C, D, E, H, L, F, A
