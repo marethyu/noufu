@@ -20,7 +20,7 @@ typedef int (*CaptureFunc)(const std::vector<uint8_t>&, int, const std::string&,
 class Emulator
 {
 public:
-    Emulator(std::shared_ptr<Logger> logger, std::shared_ptr<EmulatorConfig> config, bool bgPreview);
+    Emulator(std::shared_ptr<Logger> logger, std::shared_ptr<EmulatorConfig> config);
     ~Emulator();
 
     void InitComponents();

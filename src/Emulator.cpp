@@ -1,11 +1,12 @@
 #include "Constants.h"
 #include "Emulator.h"
 
-Emulator::Emulator(std::shared_ptr<Logger> logger, std::shared_ptr<EmulatorConfig> config, bool bgPreview) : bgPreview(bgPreview)
+Emulator::Emulator(std::shared_ptr<Logger> logger, std::shared_ptr<EmulatorConfig> config)
 {
     m_EmulatorLogger = logger;
     m_Config = config;
 
+    bgPreview = std::stoi(config->GetValue("PreviewBackground"));
     dispWidth = SCREEN_WIDTH + (bgPreview ? 48 : 0);
     dispHeight = SCREEN_HEIGHT + (bgPreview ? 48 : 0);
 

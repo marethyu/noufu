@@ -152,7 +152,7 @@ GameBoyWindows::GameBoyWindows(std::shared_ptr<Logger> logger, std::shared_ptr<E
 {
     m_Logger = logger;
 
-    m_Emulator = std::make_unique<Emulator>(logger, config, std::stoi(config->GetValue("PreviewBackground")));
+    m_Emulator = std::make_unique<Emulator>(logger, config);
     m_Emulator->SetCapture(SavePixelsToBmpFile);
 
 #ifndef USE_SDL
