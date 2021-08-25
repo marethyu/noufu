@@ -20,14 +20,16 @@ private:
 
     void ParseHeader(const std::string &rom_file, std::shared_ptr<Logger> logger);
 public:
-    Cartridge(const std::string &rom_file, std::shared_ptr<Logger> logger, bool &success);
+    Cartridge(const std::string &rom_file, std::shared_ptr<Logger> logger);
     ~Cartridge();
 
     std::string GetTitle();
 
+    void SaveRAM();
     void PrintBasicInformation();
 
     std::unique_ptr<CartridgeROMBase> m_ROM;
+    bool ROMLoaded;
 };
 
 #endif

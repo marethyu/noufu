@@ -364,6 +364,7 @@ void GameBoyWindows::HandleKeyUp(WPARAM wParam)
 void GameBoyWindows::Destroy()
 {
     m_Logger->DoLog(LOG_INFO, "GameBoyWindows::CleanUp", "Cleaning up resources...");
+    m_Emulator->m_MemControl->m_Cartridge->SaveRAM();
 
 #ifdef USE_SDL
     SDL_DestroyTexture(m_Texture);

@@ -65,11 +65,9 @@ void MemoryController::Init()
 
 bool MemoryController::LoadROM(const std::string &rom_file)
 {
-    bool success = false;
+    m_Cartridge = std::make_unique<Cartridge>(rom_file, m_Emulator->m_EmulatorLogger);
 
-    m_Cartridge = std::make_unique<Cartridge>(rom_file, m_Emulator->m_EmulatorLogger, success);
-
-    if (!success)
+    if (!m_Cartridge->ROMLoaded)
     {
         return false;
     }

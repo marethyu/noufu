@@ -1,5 +1,7 @@
 #include <fstream>
 
+#include <sys/stat.h>
+
 #include "BitMagic.h"
 
 #include "cartridge/CartridgeMBC1ROM.h"
@@ -47,6 +49,17 @@ uint8_t CartridgeMBC1ROM::CalcHighBankNumber()
     }
 
     return high_bankn;
+}
+
+void CartridgeMBC1ROM::LoadSAVIfExists()
+{
+    std::ifstream istream(rom_fname + ".sav", std::ios::in | std::ios::binary);
+
+    if (istream.is_open())
+    {
+        m_RAM = std::vector<uint8_t>(std::istreambuf_iterator<char>(istream), std::istreambuf_iterator<char>());
+        istream.close();
+    }
 }
 
 CartridgeMBC1ROM::CartridgeMBC1ROM(const std::string &rom_file, uint8_t rom_size, uint8_t ram_size, uint8_t type)
@@ -97,6 +110,8 @@ CartridgeMBC1ROM::CartridgeMBC1ROM(const std::string &rom_file, uint8_t rom_size
         break;
     }
     }
+
+    LoadSAVIfExists();
 }
 
 CartridgeMBC1ROM::~CartridgeMBC1ROM()
@@ -186,4 +201,16 @@ void CartridgeMBC1ROM::RamWriteByte(uint16_t address, uint8_t data)
             m_RAM[address - 0xA000] = data;
         }
     }
+}
+
+void CartridgeMBC1ROM::SaveRAM()
+{
+    if (!use_ram || !battery_buf)
+    {
+        return;
+    }
+
+    std::ofstream fout(rom_fname + ".sav", std::ios::out | std::ios::binary);
+    fout.write((char *) &m_RAM[0], m_RAM.size());
+    fout.close();
 }

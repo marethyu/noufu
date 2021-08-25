@@ -31,3 +31,8 @@ void CartridgePlainROM::RamWriteByte(uint16_t address, uint8_t data)
 {
     
 }
+
+void CartridgePlainROM::SaveRAM()
+{
+    
+}

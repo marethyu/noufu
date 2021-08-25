@@ -17,6 +17,8 @@ public:
 
     uint8_t RamReadByte(uint16_t address);
     void RamWriteByte(uint16_t address, uint8_t data);
+
+    void SaveRAM();
 };
 
 #endif

@@ -25,6 +25,8 @@ private:
 
     uint8_t CalcZeroBankNumber();
     uint8_t CalcHighBankNumber();
+
+    void LoadSAVIfExists();
 public:
     CartridgeMBC1ROM(const std::string &rom_file, uint8_t rom_size, uint8_t ram_size, uint8_t type);
     ~CartridgeMBC1ROM();
@@ -34,6 +36,8 @@ public:
 
     uint8_t RamReadByte(uint16_t address);
     void RamWriteByte(uint16_t address, uint8_t data);
+
+    void SaveRAM();
 };
 
 #endif

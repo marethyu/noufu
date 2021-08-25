@@ -137,7 +137,7 @@ void Cartridge::ParseHeader(const std::string &rom_file, std::shared_ptr<Logger>
     }
 }
 
-Cartridge::Cartridge(const std::string &rom_file, std::shared_ptr<Logger> logger, bool &success)
+Cartridge::Cartridge(const std::string &rom_file, std::shared_ptr<Logger> logger)
 {
     ParseHeader(rom_file, logger);
 
@@ -146,31 +146,31 @@ Cartridge::Cartridge(const std::string &rom_file, std::shared_ptr<Logger> logger
     case 0x0:
     {
         m_ROM = std::make_unique<CartridgePlainROM>(rom_file);
-        success = true;
+        ROMLoaded = true;
         break;
     }
     case 0x1:
     {
         m_ROM = std::make_unique<CartridgeMBC1ROM>(rom_file, rom_size, ram_size, MBC_PLAIN);
-        success = true;
+        ROMLoaded = true;
         break;
     }
     case 0x2:
     {
         m_ROM = std::make_unique<CartridgeMBC1ROM>(rom_file, rom_size, ram_size, MBC_RAM);
-        success = true;
+        ROMLoaded = true;
         break;
     }
     case 0x3:
     {
         m_ROM = std::make_unique<CartridgeMBC1ROM>(rom_file, rom_size, ram_size, MBC_RAM_BATTERY);
-        success = true;
+        ROMLoaded = true;
         break;
     }
     default:
     {
         logger->DoLog(LOG_WARN_POPUP, "Cartridge::Cartridge", "This cartridge type is possibly unknown or not yet supported. Stopping.");
-        success = false;
+        ROMLoaded = false;
         break;
     }
     }
@@ -184,6 +184,14 @@ Cartridge::~Cartridge()
 std::string Cartridge::GetTitle()
 {
     return title;
+}
+
+void Cartridge::SaveRAM()
+{
+    if (ROMLoaded)
+    {
+        m_ROM->SaveRAM();
+    }
 }
 
 void Cartridge::PrintBasicInformation()
