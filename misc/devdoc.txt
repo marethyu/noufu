@@ -48,14 +48,49 @@ blargg tests passed:
 
 **halt is taking too long... perhaps it will be solved after PPU implementation is complete...
 
+when to start making a savefile?
+
+at the start or end of vblankかも
+after m_Emulator->Update()かも
+
 emulator savestate file format:
+
+Note: 2-byte data is stored in big endian format
 
 byte 1: cartridge global checksum
 
-byte 2-3: AF register value (2-A, 3-F)
-byte 4-5: BC register value (4-B, 5-C)
-byte 6-7: DE register value (6-D, 7-E)
-byte 8-9: HL register value (8-H, 9-L)
-byte 10-11: PC register value (big endian)
-byte 12-13: SP register value (big endian)
+CPU:
+    uint8_t reg8[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    uint16_t *reg16 = (uint16_t *) reg8;
+    uint16_t PC;
+    int ei_delay_cnt; // counter for ei instruction delay
+    bool bHalted;
+    bool haltBug;
 
+MemController:
+    std::array<uint8_t, 0x2000> m_VRAM;
+    std::array<uint8_t, 0x4000> m_WRAM;
+    std::array<uint8_t, 0xA0> m_OAM;
+    std::array<uint8_t, 0x7F> m_HRAM;
+    bool inBootMode;
+    std::array<uint8_t, 0x80> m_IO;
+    uint8_t IE;
+
+InterruptManager:
+    bool m_IME;
+    int haltMode;
+
+Timer:
+    int m_Freq;
+    int m_Counter;
+    uint16_t DIV;
+
+PPU:
+    bool bResetted;                         // true if LCDC.7 is 0, false otherwise
+
+JoyPad:
+    uint8_t joypad_state;
+
+Emulator:
+    int m_TotalCycles; // T-cycles
+    int m_PrevTotalCycles;
