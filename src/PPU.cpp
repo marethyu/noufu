@@ -265,11 +265,11 @@ void PPU::DrawPixel(int x, int y, const rgb_tuple &colour)
 
     if (m_Emulator->bgPreview)
     {
-        offset = (y + 24) * (SCREEN_WIDTH + BORDER_SIZE) * 4 + (x + 24) * 4;
+        offset = (y + 24) * m_Emulator->dispWidth * 4 + (x + 24) * 4;
     }
     else
     {
-        offset = y * SCREEN_WIDTH * 4 + x * 4;
+        offset = y * m_Emulator->dispWidth * 4 + x * 4;
     }
 
     m_Pixels[offset    ] = colour.b;
