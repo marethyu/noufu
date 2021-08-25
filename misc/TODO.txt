@@ -1,38 +1,40 @@
+priority:
+1. cpu microops
+2. save states
+3. spu
+4. gbc emulation
+5. improve debugging cli
+6. make a mini gif encoder for recording emulator
+
+others:
+init background with nintendo logo at reset?
 pass other tests
-sound
 serial communication
 debug window
-save state
 double speed mode
 battery
 mbcs
 custom startup logo
 icon
-gb color emulation
-config file more options (debug mode on/off, what shade of color, cgb mode on/off, input settings, lcd display size)
 rewind https://binji.github.io/posts/binjgb-rewind/
 just in time compiler
-ROM file reader
+ROM file dumper
 gameboy task scheduler
 log file - print emulator states
-improve debugging cli
-optimize c++ code
 label memory regions for debugging
 implement more commands for debugging cli
 fix all TODOs
 opengl
-video recording (to gif)
 accelerators
 friend classes
 async logging
 improve dma and no oam access during dma transfer
 remove the need for alpha value
-cpu microops
 jp title
 about dialog
 https://www.transmissionzero.co.uk/computing/win32-apps-with-mingw/
 ppu logging and other logging
 changelog
-init background with nintendo logo at reset?
 webassembly port (so the emulator can run in browser)
 make sdl window a seperate class
+instruction caching

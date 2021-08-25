@@ -50,8 +50,7 @@ blargg tests passed:
 
 when to start making a savefile?
 
-at the start or end of vblankかも
-after m_Emulator->Update()かも
+at the start of vblank and after m_Emulator->Update()かも
 
 emulator savestate file format:
 
@@ -87,6 +86,7 @@ Timer:
 
 PPU:
     bool bResetted;                         // true if LCDC.7 is 0, false otherwise
+    int WLY;                                // window internal line counter
 
 JoyPad:
     uint8_t joypad_state;
