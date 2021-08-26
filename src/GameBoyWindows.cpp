@@ -6,7 +6,6 @@
 #define FMT_HEADER_ONLY
 #include "3rdparty/fmt/format.h"
 
-// TODO modify to include bgPreview
 // Save the pixel data to a bmp file
 // Adapted from https://www.technical-recipes.com/2011/creating-bitmap-files-from-raw-pixel-data-in-c/
 static int SavePixelsToBmpFile(const std::vector<uint8_t> &pixels, int screenScale, const std::string &fname, bool bgPreview)
