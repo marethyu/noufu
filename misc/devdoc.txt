@@ -50,7 +50,7 @@ blargg tests passed:
 
 when to start making a savefile?
 
-at the start of vblank and after m_Emulator->Update()かも
+before the oam search phase starts and after m_Emulator->Update()かも
 
 emulator savestate file format:
 
@@ -84,7 +84,7 @@ Timer:
     int m_Counter;
     uint16_t DIV;
 
-PPU:
+PPU: (TODO add more fields)
     bool bResetted;                         // true if LCDC.7 is 0, false otherwise
     int WLY;                                // window internal line counter
 
