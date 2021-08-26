@@ -97,7 +97,7 @@ Currently there are 3 different builds for this emulator.
 - `gui\gdi` - GUI with Windows GDI32 graphics output.
 - `gui\sdl` - GUI with SDL2 graphics output.
 
-You can fetch yours [here](TODO).
+You can fetch yours [here](https://github.com/marethyu/noufu/releases).
 
 ## Colour Palettes
 
