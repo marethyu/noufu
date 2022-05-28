@@ -94,3 +94,17 @@ JoyPad:
 Emulator:
     int m_TotalCycles; // T-cycles
     int m_PrevTotalCycles;
+
+savestate contents
+
+- state of cpu registers
+- memory from 0x8000 to 0xFFFF
+- timer state
+- joypad state
+- ppu state
+
+if you always save at a specific time, you either have to
+1) save the internal state of the currently executing instruction
+2) wait for the instruction to finish, and save how many cycles past the intended time you are
+
+try 2, save at the start of vblank
