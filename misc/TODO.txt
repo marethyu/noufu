@@ -40,3 +40,4 @@ make sdl window a seperate class
 instruction caching
 take a look at new sdl_tex_rewrite_rev.cpp from win32 rep and implement changes
 load nintendo logo data to vram at startup when boot rom isnt used
+instead of config.ini, use windows registry

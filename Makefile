@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++2a -Wall -fmax-errors=5
+CXXFLAGS = -std=c++2a -Wall -fmax-errors=5 -g
 
 .PHONY: all
 .PHONY: clean

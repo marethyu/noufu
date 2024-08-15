@@ -1,38 +1,7 @@
-#ifndef _CPU_DEBUG_INFO_
-#define _CPU_DEBUG_INFO_
-
-#include <string>
-
-const std::string reg8_str[8] = {
-    "C",
-    "B",
-    "E",
-    "D",
-    "L",
-    "H",
-    "F",
-    "A"
-};
-
-const std::string reg16_str[6] = {
-    "BC",
-    "DE",
-    "HL",
-    "AF",
-    "SP",
-    "PC"
-};
-
-const std::string flag_str[4] = {
-    "C",
-    "H",
-    "N",
-    "Z"
-};
 
 enum
 {
-    ARG_NONE = 0,
+    ARG_NONE,
     ARG_U8,
     ARG_I8,
     ARG_U16
@@ -43,6 +12,8 @@ struct OpcodeInfo
     std::string fmt_str;
     int arg_type;
 };
+
+
 
 const OpcodeInfo opcode_info[256] = {
     {"NOP", ARG_NONE},
@@ -300,7 +271,7 @@ const OpcodeInfo opcode_info[256] = {
     {"UNUSED", ARG_NONE},
     {"UNUSED", ARG_NONE},
     {"CP A,{0:02X}", ARG_U8},
-    {"RST 38h", ARG_NONE}
+    {"RST 38h", ARG_NONE},
 };
 
 const OpcodeInfo cb_opcode_info[256] = {
@@ -559,7 +530,6 @@ const OpcodeInfo cb_opcode_info[256] = {
     {"SET 7,H", ARG_NONE},
     {"SET 7,L", ARG_NONE},
     {"SET 7,(HL)", ARG_NONE},
-    {"SET 7,A", ARG_NONE}
+    {"SET 7,A", ARG_NONE},
 };
 
-#endif
