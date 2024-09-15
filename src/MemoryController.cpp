@@ -110,7 +110,7 @@ uint8_t MemoryController::ReadByte(uint16_t address) const
     {
         return m_Cartridge->m_ROM->ReadByte(address);
     }
-    if (address >= 0x8000 && address < 0xA000)
+    else if (address >= 0x8000 && address < 0xA000)
     {
         return m_VRAM[address - 0x8000];
     }
@@ -236,6 +236,7 @@ void MemoryController::WriteByte(uint16_t address, uint8_t data)
     {
         m_IO[0x50] = data;
         inBootMode = false;
+        m_Emulator->ResetComponents();
     }
     else if (address >= 0xFF00 && address < 0xFF80)
     {
